@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Buildly — Section Composer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0a0e17; --panel:#0d1220; --panel-2:#121a2c; --ink:#eaf2ff; --muted:#7d90b3; --line:#1c2740; --accent:#5ec8ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;height:100vh;overflow:hidden}
+  .app{display:flex;height:100vh}
+
+  /* Sidebar */
+  .sidebar{width:320px;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;flex-shrink:0;padding:18px}
+  .brand{font-weight:700;font-size:15px;margin-bottom:4px;display:flex;align-items:center;gap:8px;font-family:'Space Grotesk',sans-serif}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .brand-sub{font-family:'Courier New',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px}
+  .section{margin-bottom:22px}
+  .section h3{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:10px;font-family:'Courier New',monospace}
+
+  /* Theme grid */
+  .theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .theme-card{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:8px;cursor:pointer;transition:.15s}
+  .theme-card:hover{border-color:var(--accent)}
+  .theme-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .theme-swatch{width:100%;height:34px;border-radius:6px;margin-bottom:6px}
+  .theme-name{font-size:11px;font-weight:600}
+  .custom-accent{display:flex;align-items:center;gap:8px;margin-top:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+  .custom-accent input[type=color]{width:28px;height:28px;border:none;background:none;padding:0;cursor:pointer}
+  .custom-accent span{font-size:11px;color:var(--muted)}
+
+  /* Library */
+  .lib-role{margin-bottom:12px}
+  .lib-role-title{font-size:11px;color:var(--ink);font-weight:600;margin-bottom:6px}
+  .lib-variants{display:flex;flex-wrap:wrap;gap:6px}
+  .lib-add{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:7px;padding:6px 10px;font-size:11.5px;cursor:pointer}
+  .lib-add:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* Layers / page structure */
+  .layers{display:flex;flex-direction:column;gap:6px}
+  .layer{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;cursor:grab;justify-content:space-between}
+  .layer.drag-over{border-color:var(--accent)}
+  .layer .handle{color:var(--muted)}
+  .layer .lidx{font-family:'Courier New',monospace;color:var(--accent);font-size:11px;flex-shrink:0}
+  .layer .lname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .layer-actions{display:flex;gap:4px}
+  .lbtn{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;border-radius:5px;padding:2px 5px;line-height:1}
+  .lbtn:hover{color:var(--ink);background:#1a2338}
+  .lbtn.del:hover{color:#ff6b6b}
+  .lbtn.bg:hover{color:var(--accent)}
+  .empty-note{font-size:11.5px;color:var(--muted)}
+
+  /* Motion */
+  .slider-row{display:flex;flex-direction:column;gap:6px}
+  .slider-row label{font-size:11.5px;color:var(--muted)}
+  input[type=range]{width:100%}
+
+  /* Saved */
+  .saved-list{display:flex;flex-direction:column;gap:8px}
+  .saved-item{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .saved-item .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .saved-item button{background:none;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer}
+  .saved-item button:hover{border-color:var(--accent)}
+
+  /* Main canvas */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .canvas-top{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .canvas-top-left{display:flex;align-items:center;gap:14px;min-width:0}
+  .status{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'Courier New',monospace}
+  .history-controls{display:flex;gap:6px}
+  .hist-btn{background:none;border:1px solid var(--line);color:var(--ink);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
+  .hist-btn:disabled{opacity:.35;cursor:not-allowed}
+  .hist-btn:not(:disabled):hover{border-color:var(--accent)}
+  .viewport-toggle{display:flex;gap:6px}
+  .viewport-toggle button{background:none;border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer}
+  .viewport-toggle button.on{border-color:var(--accent);color:var(--ink)}
+  .actions{display:flex;gap:8px}
+  .actions button{background:var(--accent);border:none;color:#04101c;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer}
+  .actions button.secondary{background:none;border:1px solid var(--line);color:var(--ink);font-weight:600}
+  .canvas-wrap{flex:1;overflow:auto;background:#05070d;background-image:radial-gradient(circle,#16233c 1px,transparent 1px);background-size:22px 22px;display:flex;justify-content:center;padding:26px}
+  iframe{background:#fff;border:none;height:fit-content;transition:width .2s;box-shadow:0 0 0 1px #16233c, 0 30px 60px rgba(0,0,0,.5)}
+  .hint{padding:10px 18px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);background:var(--panel)}
+
+  /* Floating toolbar */
+  #toolbar{position:fixed;display:none;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:6px 8px;box-shadow:0 12px 28px rgba(0,0,0,.5);z-index:1000;flex-wrap:wrap;max-width:340px}
+  #toolbar .tb-label{font-size:10.5px;color:var(--muted);padding:0 2px}
+  #toolbar .tb-sep{width:1px;height:18px;background:var(--line);margin:0 2px}
+  #toolbar .tb-swatch{width:18px;height:18px;border-radius:50%;cursor:pointer;border:1px solid rgba(255,255,255,.3)}
+  #toolbar .size-btn,#toolbar .align-btn,#toolbar .style-btn{background:none;border:1px solid var(--line);color:var(--ink);border-radius:6px;font-size:11px;padding:5px 8px;cursor:pointer}
+  #toolbar .size-btn.on,#toolbar .align-btn.on,#toolbar .style-btn.on{border-color:var(--accent);color:var(--accent)}
+  #toolbar .font-select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:11px;padding:5px 6px;max-width:96px}
+
+  /* Toasts */
+  .toast-wrap{position:fixed;bottom:20px;right:20px;z-index:1200;display:flex;flex-direction:column;gap:8px}
+  .toast{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);padding:10px 14px;border-radius:9px;font-size:12.5px;box-shadow:0 10px 24px rgba(0,0,0,.4);opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:1300}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;width:280px}
+  .modal h3{font-size:14px;margin:0 0 12px}
+  .modal input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 10px;font-size:13px}
+  .modal-actions{display:flex;gap:8px;margin-top:14px}
+  .modal-actions button{flex:1;border:none;border-radius:8px;padding:9px;font-weight:600;font-size:12.5px;cursor:pointer}
+  #modalCancel{background:var(--panel-2);color:var(--ink);border:1px solid var(--line)!important}
+  #modalConfirm{background:var(--accent);color:#04101c}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="sidebar">
+    <div class="brand"><span class="dot"></span>Buildly</div>
+    <div class="brand-sub">Sec. composer / v3</div>
+
+    <div class="section">
+      <h3>01 · Theme</h3>
+      <div class="theme-grid" id="themeList"></div>
+      <div class="custom-accent">
+        <input type="color" id="customAccent" value="#5ec8ff">
+        <span>Custom accent color</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>02 · Add a section</h3>
+      <div id="libraryList"></div>
+    </div>
+
+    <div class="section">
+      <h3>03 · Page structure</h3>
+      <div class="layers" id="layersList"></div>
+      <div class="empty-note" id="layersEmpty">No sections yet — add one above.</div>
+    </div>
+
+    <div class="section">
+      <h3>04 · Motion</h3>
+      <div class="slider-row">
+        <label>Blob drift speed — <span id="speedLabel">1×</span></label>
+        <input type="range" id="speedSlider" min="0.3" max="2.5" step="0.1" value="1">
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>05 · Saved sites</h3>
+      <div class="saved-list" id="savedList"></div>
+      <div class="empty-note" id="savedEmpty">Nothing saved yet.</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="canvas-top">
+      <div class="canvas-top-left">
+        <span class="status" id="statusText">UNTITLED.PAGE</span>
+        <div class="history-controls">
+          <button id="undoBtn" class="hist-btn" title="Undo (Ctrl+Z)" disabled>↺ Undo</button>
+          <button id="redoBtn" class="hist-btn" title="Redo (Ctrl+Shift+Z)" disabled>↻ Redo</button>
+        </div>
+      </div>
+      <div class="viewport-toggle" id="vpToggle">
+        <button data-w="1200" class="on">Desktop</button>
+        <button data-w="820">Tablet</button>
+        <button data-w="420">Mobile</button>
+      </div>
+      <div class="actions">
+        <button class="secondary" id="copyBtn">Copy HTML</button>
+        <button class="secondary" id="exportBtn">Export</button>
+        <button id="saveBtn">Save</button>
+      </div>
+    </div>
+    <div class="canvas-wrap">
+      <iframe id="preview" style="width:1200px"></iframe>
+    </div>
+    <div class="hint">Add sections from the library, click any text to edit it, click an image to replace it. ⌘/Ctrl+Z to undo, ⌘/Ctrl+Shift+Z to redo.</div>
+  </div>
+
+</div>
+
+<div id="toolbar">
+  <span class="tb-label">Color</span>
+  <span class="tb-swatch" data-c="#111111" style="background:#111"></span>
+  <span class="tb-swatch" data-c="#ffffff" style="background:#fff"></span>
+  <span class="tb-swatch" data-c="#5ec8ff" style="background:#5ec8ff"></span>
+  <span class="tb-swatch" data-c="#ff5d8f" style="background:#ff5d8f"></span>
+  <span class="tb-swatch" data-c="#3ddc97" style="background:#3ddc97"></span>
+  <input type="color" id="tbCustomColor" title="Custom color" style="width:20px;height:20px;border:none;padding:0;background:none;cursor:pointer">
+  <span class="tb-sep"></span>
+  <button class="size-btn" data-s="0.85">S</button>
+  <button class="size-btn on" data-s="1">M</button>
+  <button class="size-btn" data-s="1.3">L</button>
+  <span class="tb-sep"></span>
+  <button class="align-btn" data-a="left">L</button>
+  <button class="align-btn" data-a="center">C</button>
+  <button class="align-btn" data-a="right">R</button>
+  <span class="tb-sep"></span>
+  <button class="style-btn" data-style="bold"><b>B</b></button>
+  <button class="style-btn" data-style="italic"><i>I</i></button>
+  <span class="tb-sep"></span>
+  <select id="fontSelect" class="font-select">
+    <option value="'Inter',sans-serif">Inter</option>
+    <option value="'Space Grotesk',sans-serif">Grotesk</option>
+    <option value="Georgia,serif">Georgia</option>
+    <option value="'Courier New',monospace">Mono</option>
+  </select>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3>Name this site</h3>
+    <input type="text" id="modalInput" placeholder="My Site">
+    <div class="modal-actions">
+      <button id="modalCancel">Cancel</button>
+      <button id="modalConfirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="imgFileInput" accept="image/*" style="display:none">
+<input type="file" id="videoFileInput" accept="video/*" style="display:none">
+
+<script>
+/* ================= helpers ================= */
+function placeholderImg(w, h){
+  w = w || 480; h = h || 320;
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='"+w+"' height='"+h+"'>"
+    + "<rect width='100%' height='100%' fill='#9a9a9a' fill-opacity='0.22'/>"
+    + "<rect x='1' y='1' width='"+(w-2)+"' height='"+(h-2)+"' fill='none' stroke='#9a9a9a' stroke-width='1.5' stroke-dasharray='7 7'/>"
+    + "<circle cx='"+Math.round(w*0.32)+"' cy='"+Math.round(h*0.38)+"' r='"+Math.round(h*0.13)+"' fill='#9a9a9a' fill-opacity='0.4'/>"
+    + "<path d='M0 "+Math.round(h*0.8)+" L"+Math.round(w*0.3)+" "+Math.round(h*0.5)+" L"+Math.round(w*0.55)+" "+Math.round(h*0.72)+" L"+Math.round(w*0.75)+" "+Math.round(h*0.55)+" L"+w+" "+Math.round(h*0.78)+" L"+w+" "+h+" L0 "+h+" Z' fill='#9a9a9a' fill-opacity='0.4'/>"
+    + "</svg>";
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+/* ================= themes ================= */
+const THEMES = {
+  blueprint:{ name:'Blueprint', bg:'#f4f7fb', ink:'#0d1b2e', muted:'#5b6c85', accent:'#2f6fed', accentInk:'#ffffff', surface:'#e7edf7', radius:'6px', fontDisplay:"'Space Grotesk',sans-serif", fontBody:"'Inter',sans-serif", fontImport:'Space+Grotesk:wght@500;700|Inter:wght@400;600', swatch:'linear-gradient(135deg,#2f6fed,#f4f7fb)' },
+  sunburn:{ name:'Sunburn', bg:'#fff6ea', ink:'#3a1e0a', muted:'#8a6a4a', accent:'#ff7a30', accentInk:'#3a1e0a', surface:'#ffe9d1', radius:'999px', fontDisplay:"'Space Grotesk',sans-serif", fontBody:"'Inter',sans-serif", fontImport:'Space+Grotesk:wght@500;700|Inter:wght@400;600', swatch:'linear-gradient(135deg,#ff7a30,#fff6ea)' },
+  nightshade:{ name:'Nightshade', bg:'#100b1c', ink:'#f1ecff', muted:'#8d84ad', accent:'#d76bff', accentInk:'#100b1c', surface:'#1a1330', radius:'10px', fontDisplay:"'Space Grotesk',sans-serif", fontBody:"'Inter',sans-serif", fontImport:'Space+Grotesk:wght@500;700|Inter:wght@400;600', swatch:'linear-gradient(135deg,#d76bff,#100b1c)' },
+  mint:{ name:'Mint SaaS', bg:'#f6fbf9', ink:'#0f241d', muted:'#5f8577', accent:'#22c58b', accentInk:'#ffffff', surface:'#e6f5ee', radius:'14px', fontDisplay:"'Poppins',sans-serif", fontBody:"'Inter',sans-serif", fontImport:'Poppins:wght@500;700|Inter:wght@400;600', swatch:'linear-gradient(135deg,#22c58b,#f6fbf9)' },
+  riso:{ name:'Riso Duotone', bg:'#f2ead8', ink:'#221c16', muted:'#6b5f4f', accent:'#e8622c', accentInk:'#f2ead8', surface:'#e7dcc2', radius:'3px', fontDisplay:"'Space Grotesk',sans-serif", fontBody:"'Inter',sans-serif", fontImport:'Space+Grotesk:wght@500;700|Inter:wght@400;600', swatch:'linear-gradient(135deg,#e8622c,#2f7a6b)' },
+  lab:{ name:'Glass Lab', bg:'#eef3f7', ink:'#132330', muted:'#5a7185', accent:'#5eb1ff', accentInk:'#0a1622', surface:'#dde9f2', radius:'12px', fontDisplay:"'IBM Plex Sans',sans-serif", fontBody:"'IBM Plex Sans',sans-serif", fontImport:'IBM+Plex+Sans:wght@400;600', swatch:'linear-gradient(135deg,#5eb1ff,#eef3f7)' },
+  market:{ name:'Night Market', bg:'#241012', ink:'#f5e6d8', muted:'#b08e82', accent:'#e8b23d', accentInk:'#241012', surface:'#33171a', radius:'12px', fontDisplay:"'Space Grotesk',sans-serif", fontBody:"'Inter',sans-serif", fontImport:'Space+Grotesk:wght@500;700|Inter:wght@400;600', swatch:'linear-gradient(135deg,#e8b23d,#241012)' },
+  verre:{ name:'Verre', bg:'#faf7f2', ink:'#1c1a17', muted:'#7a7364', accent:'#c9a45c', accentInk:'#1c1a17', surface:'#f1ece3', radius:'2px', fontDisplay:"'Playfair Display',serif", fontBody:"'Source Serif 4',Georgia,serif", fontImport:'Playfair+Display:wght@600;700|Source+Serif+4:wght@400;600', swatch:'linear-gradient(135deg,#c9a45c,#1c1a17)' }
+};
+
+function googleFontsHref(fontImport){
+  const families = fontImport.split('|').map(f=> 'family=' + f).join('&');
+  return `https://fonts.googleapis.com/css2?${families}&display=swap`;
+}
+function shell(themeKey){
+  const t = THEMES[themeKey];
+  const vars = `--bg:${t.bg};--ink:${t.ink};--muted:${t.muted};--accent:${t.accent};--accent-ink:${t.accentInk};--surface:${t.surface};--radius:${t.radius};--font-display:${t.fontDisplay};--font-body:${t.fontBody};--font-mono:'Courier New',monospace;--speed:1`;
+  return `<!DOCTYPE html><html style="${vars}"><head><meta charset="UTF-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" id="themeFontLink" href="${googleFontsHref(t.fontImport)}">
+  <style>
+    *{box-sizing:border-box;margin:0}
+    body{font-family:var(--font-body);color:var(--ink);background:var(--bg)}
+    h1,h2,h3{font-family:var(--font-display)}
+    .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.6}
+    .btn{display:inline-block;padding:12px 24px;border-radius:var(--radius);font-weight:600;font-size:14px;cursor:text;background:var(--accent);color:var(--accent-ink)}
+    .card{background:var(--surface);border-radius:var(--radius);padding:20px}
+    .blob{position:absolute;width:300px;height:300px;border-radius:50%;background:var(--accent);opacity:.16;filter:blur(60px);animation:floatBlob calc(6s / var(--speed)) ease-in-out infinite;pointer-events:none}
+    @keyframes floatBlob{0%,100%{transform:translateY(0)}50%{transform:translateY(26px)}}
+    @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+    @keyframes gradientShift{0%{background-position:0% center}100%{background-position:200% center}}
+    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes navDrop{from{transform:translateY(-16px);opacity:0}to{transform:translateY(0);opacity:1}}
+    @keyframes pulseDot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.6);opacity:.5}}
+    @keyframes sweep{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes typing{from{width:0}to{width:20ch}}
+    @keyframes blinkCaret{50%{border-color:transparent}}
+    [contenteditable]:hover{outline:1px dashed rgba(94,150,255,.5);outline-offset:2px}
+    .sel-active{outline:2px solid var(--accent)!important;outline-offset:2px}
+  </style></head><body></body></html>`;
+}
+
+/* ================= section library ================= */
+const SECTIONS = {
+  nav:[
+    { label:'Simple', html:`<section data-block data-label="Nav — Simple" style="background:var(--bg);display:flex;justify-content:space-between;align-items:center;padding:22px 6vw;border-bottom:1px solid rgba(0,0,0,.08)">
+      <span contenteditable="true" style="font-family:var(--font-display);font-weight:700;font-size:15px">Studio Name</span>
+      <div style="display:flex;gap:22px;align-items:center;font-size:13px">
+        <span contenteditable="true" style="opacity:.7">Work</span><span contenteditable="true" style="opacity:.7">About</span>
+        <span class="btn" contenteditable="true" style="padding:8px 16px;font-size:12.5px">Contact</span>
+      </div></section>` },
+    { label:'Animated', html:`<section data-block data-label="Nav — Animated" style="background:var(--bg);padding:22px 6vw;overflow:hidden;animation:navDrop calc(0.6s / var(--speed)) ease-out">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span contenteditable="true" style="font-family:var(--font-display);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;animation:pulseDot calc(2s / var(--speed)) ease-in-out infinite"></span>Studio Name
+        </span>
+        <div style="display:flex;gap:22px;align-items:center;font-size:13px">
+          <span contenteditable="true" style="opacity:.7">Work</span><span contenteditable="true" style="opacity:.7">About</span>
+          <span class="btn" contenteditable="true" style="padding:8px 16px;font-size:12.5px">Contact</span>
+        </div>
+      </div>
+      <div style="height:2px;width:100%;margin-top:18px;background:linear-gradient(90deg,transparent,var(--accent),transparent);background-size:200% 100%;animation:sweep calc(3s / var(--speed)) linear infinite"></div></section>` },
+    { label:'Staggered', html:`<section data-block data-label="Nav — Staggered" style="background:var(--bg);padding:22px 6vw;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(0,0,0,.08)">
+      <span contenteditable="true" style="font-family:var(--font-display);font-weight:700;font-size:15px;opacity:0;animation:fadeUp .5s ease-out forwards">Studio Name</span>
+      <div style="display:flex;gap:22px;align-items:center;font-size:13px">
+        <span contenteditable="true" style="opacity:0;animation:fadeUp .5s ease-out .1s forwards">Work</span>
+        <span contenteditable="true" style="opacity:0;animation:fadeUp .5s ease-out .2s forwards">About</span>
+        <span class="btn" contenteditable="true" style="padding:8px 16px;font-size:12.5px;opacity:0;animation:fadeUp .5s ease-out .3s forwards">Contact</span>
+      </div></section>` },
+    { label:'Centered Logo', html:`<section data-block data-label="Nav — Centered Logo" style="background:var(--bg);padding:20px 6vw;border-bottom:1px solid rgba(0,0,0,.08)">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;font-size:13px">
+        <div style="display:flex;gap:18px"><span contenteditable="true" style="opacity:.7">Work</span><span contenteditable="true" style="opacity:.7">About</span></div>
+        <span contenteditable="true" style="font-family:var(--font-display);font-weight:700;font-size:16px;text-align:center">Studio Name</span>
+        <div style="display:flex;gap:18px;justify-content:flex-end"><span contenteditable="true" style="opacity:.7">Blog</span><span class="btn" contenteditable="true" style="padding:8px 16px;font-size:12.5px">Contact</span></div>
+      </div></section>` }
+  ],
+  hero:[
+    { label:'Bold', html:`<section data-block data-label="Hero — Bold" style="background:var(--bg);padding:9vw 6vw 7vw;position:relative;overflow:hidden">
+      <div class="blob" style="top:-60px;right:-40px"></div>
+      <div class="eyebrow" contenteditable="true" style="position:relative">Est. 2026</div>
+      <h1 contenteditable="true" style="position:relative;font-size:clamp(2.4rem,6.5vw,4.6rem);font-weight:700;max-width:16ch;margin-top:14px;line-height:1.04">Build the thing you keep talking about.</h1>
+      <p contenteditable="true" style="position:relative;margin-top:18px;max-width:46ch;opacity:.7;font-size:16px">A page in minutes, not a sprint. Swap sections, change the theme, ship it.</p>
+      <div style="position:relative;margin-top:26px;display:flex;gap:12px">
+        <div class="btn" contenteditable="true">Get started</div>
+        <div class="btn" contenteditable="true" style="background:none;border:1px solid currentColor;color:var(--ink)">See examples</div>
+      </div></section>` },
+    { label:'Centered', html:`<section data-block data-label="Hero — Centered" style="background:var(--bg);padding:8vw 6vw;text-align:center">
+      <h1 contenteditable="true" style="font-size:clamp(2.3rem,6vw,4.2rem);font-weight:700;max-width:20ch;margin:0 auto">Everything your launch page needs, nothing it doesn't.</h1>
+      <p contenteditable="true" style="max-width:42ch;margin:16px auto 0;opacity:.68">One theme, mixed sections, exported in a single file.</p>
+      <div class="btn" contenteditable="true" style="margin-top:24px">Start building</div>
+      <img data-img-editable="true" src="${placeholderImg(640,360)}" alt="Preview" style="margin-top:40px;max-width:640px;width:100%;border-radius:var(--radius);cursor:pointer"></section>` },
+    { label:'Split', html:`<section data-block data-label="Hero — Split" style="background:var(--bg);padding:7vw 6vw;display:grid;grid-template-columns:1.1fr 1fr;gap:40px;align-items:center;position:relative;overflow:hidden">
+      <div class="blob" style="bottom:-80px;left:-60px"></div>
+      <div style="position:relative">
+        <h1 contenteditable="true" style="font-size:clamp(2.1rem,5vw,3.6rem);font-weight:700;max-width:15ch">Two columns. One good idea.</h1>
+        <p contenteditable="true" style="margin-top:14px;max-width:40ch;opacity:.68">Say the thing plainly, then show it.</p>
+        <div class="btn" contenteditable="true" style="margin-top:22px">Learn more</div>
+      </div>
+      <img data-img-editable="true" src="${placeholderImg(480,360)}" alt="Product shot" style="position:relative;width:100%;border-radius:var(--radius);cursor:pointer"></section>` },
+    { label:'Marquee', html:`<section data-block data-label="Hero — Marquee" style="background:var(--bg);padding:7vw 0;overflow:hidden">
+      <div style="white-space:nowrap;overflow:hidden;border-top:1px solid rgba(0,0,0,.08);border-bottom:1px solid rgba(0,0,0,.08);padding:10px 0;margin-bottom:40px">
+        <div style="display:inline-block;animation:marquee calc(18s / var(--speed)) linear infinite;font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:.02em">
+          <span contenteditable="true">NEW · LAUNCH READY · NEW · LAUNCH READY · NEW · LAUNCH READY · NEW · LAUNCH READY&nbsp;·&nbsp;</span><span aria-hidden="true">NEW · LAUNCH READY · NEW · LAUNCH READY · NEW · LAUNCH READY · NEW · LAUNCH READY&nbsp;·&nbsp;</span>
+        </div>
+      </div>
+      <div style="padding:0 6vw">
+        <h1 contenteditable="true" style="font-size:clamp(2.3rem,6vw,4.2rem);font-weight:700;max-width:16ch">Loud where it counts, quiet everywhere else.</h1>
+        <p contenteditable="true" style="margin-top:16px;max-width:44ch;opacity:.68">One line that moves, one line that means it.</p>
+        <div class="btn" contenteditable="true" style="margin-top:24px">Take a look</div>
+      </div></section>` },
+    { label:'Gradient Text', html:`<section data-block data-label="Hero — Gradient Text" style="background:var(--bg);padding:9vw 6vw;text-align:center">
+      <div class="eyebrow" contenteditable="true">Now shipping</div>
+      <h1 contenteditable="true" style="margin-top:14px;font-size:clamp(2.6rem,7vw,5rem);font-weight:800;max-width:18ch;margin-left:auto;margin-right:auto;background:linear-gradient(90deg,var(--accent),var(--ink),var(--accent));background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gradientShift calc(6s / var(--speed)) linear infinite">Color that never sits still.</h1>
+      <p contenteditable="true" style="margin-top:18px;max-width:40ch;margin-left:auto;margin-right:auto;opacity:.68">A headline with its own pulse, built entirely in CSS.</p>
+      <div class="btn" contenteditable="true" style="margin-top:24px">See how</div></section>` },
+    { label:'Orbit', html:`<section data-block data-label="Hero — Orbit" style="background:var(--bg);padding:8vw 6vw;text-align:center">
+      <div style="position:relative;width:180px;height:180px;margin:0 auto 30px">
+        <div style="position:absolute;inset:0;border:1px dashed var(--muted);border-radius:50%;opacity:.4"></div>
+        <div style="position:absolute;inset:0;animation:spin calc(8s / var(--speed)) linear infinite">
+          <div style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:var(--accent)"></div>
+        </div>
+        <div style="position:absolute;inset:0;animation:spin calc(5s / var(--speed)) linear infinite reverse">
+          <div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:9px;height:9px;border-radius:50%;background:var(--ink);opacity:.5"></div>
+        </div>
+        <div style="position:absolute;inset:44px;border-radius:50%;background:var(--surface)"></div>
+      </div>
+      <h1 contenteditable="true" style="font-size:clamp(2.2rem,6vw,4rem);font-weight:700;max-width:16ch;margin:0 auto">Small moving parts, one steady center.</h1>
+      <p contenteditable="true" style="margin-top:16px;max-width:42ch;margin-left:auto;margin-right:auto;opacity:.68">Everything orbits the thing that matters.</p>
+      <div class="btn" contenteditable="true" style="margin-top:24px">Find your center</div></section>` },
+    { label:'Typewriter', html:`<section data-block data-label="Hero — Typewriter" style="background:var(--bg);padding:9vw 6vw">
+      <div class="eyebrow" contenteditable="true">$ init studio</div>
+      <h1 style="margin-top:14px;font-family:var(--font-mono);font-size:clamp(1.8rem,5vw,3rem);font-weight:700;max-width:22ch;white-space:nowrap;overflow:hidden;border-right:3px solid var(--accent);width:20ch;animation:typing calc(2.5s / var(--speed)) steps(24) 1 forwards, blinkCaret .8s step-end infinite">
+        <span contenteditable="true">building_the_next_thing()</span>
+      </h1>
+      <p contenteditable="true" style="margin-top:20px;max-width:44ch;opacity:.68">No fluff. Just the build log.</p>
+      <div class="btn" contenteditable="true" style="margin-top:24px">View the repo</div></section>` },
+    { label:'Layered Cards', html:`<section data-block data-label="Hero — Layered Cards" style="background:var(--bg);padding:8vw 6vw;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center">
+      <div>
+        <h1 contenteditable="true" style="font-size:clamp(2.1rem,5vw,3.6rem);font-weight:700;max-width:14ch">Stack it up, ship it out.</h1>
+        <p contenteditable="true" style="margin-top:14px;max-width:38ch;opacity:.68">Three cards, one point of view.</p>
+        <div class="btn" contenteditable="true" style="margin-top:22px">Browse the stack</div>
+      </div>
+      <div style="position:relative;height:260px">
+        <div class="card" style="position:absolute;width:70%;height:180px;top:40px;left:0;transform:rotate(-6deg);box-shadow:0 20px 40px rgba(0,0,0,.15);animation:floatBlob calc(7s / var(--speed)) ease-in-out infinite"></div>
+        <div class="card" style="position:absolute;width:70%;height:180px;top:20px;left:15%;transform:rotate(2deg);box-shadow:0 20px 40px rgba(0,0,0,.18);background:var(--accent);opacity:.9"></div>
+        <div class="card" style="position:absolute;width:70%;height:180px;top:0;left:30%;transform:rotate(-2deg);box-shadow:0 20px 40px rgba(0,0,0,.2)"></div>
+      </div></section>` }
+  ],
+  features:[
+    { label:'Grid', html:`<section data-block data-label="Features — Grid" style="background:var(--surface);padding:6vw 6vw;display:grid;grid-template-columns:repeat(3,1fr);gap:24px">
+      <div><div class="eyebrow" contenteditable="true">01</div><h3 contenteditable="true" style="margin-top:8px;font-size:18px">Fast to start</h3><p contenteditable="true" style="margin-top:8px;opacity:.68;font-size:14px">Pick sections, not a blank page.</p></div>
+      <div><div class="eyebrow" contenteditable="true">02</div><h3 contenteditable="true" style="margin-top:8px;font-size:18px">Actually yours</h3><p contenteditable="true" style="margin-top:8px;opacity:.68;font-size:14px">Every word and color is editable.</p></div>
+      <div><div class="eyebrow" contenteditable="true">03</div><h3 contenteditable="true" style="margin-top:8px;font-size:18px">Leaves clean</h3><p contenteditable="true" style="margin-top:8px;opacity:.68;font-size:14px">Exports as one plain HTML file.</p></div></section>` },
+    { label:'Split', html:`<section data-block data-label="Features — Split" style="background:var(--surface);padding:6vw 6vw;display:grid;grid-template-columns:1fr 1fr;gap:32px">
+      <div><h3 contenteditable="true" style="font-size:22px">Made for editing live</h3><p contenteditable="true" style="margin-top:10px;opacity:.68">Click, type, done — no dialog boxes in the way.</p></div>
+      <div><h3 contenteditable="true" style="font-size:22px">Made for mixing sections</h3><p contenteditable="true" style="margin-top:10px;opacity:.68">Pull from the library, drop it where it fits.</p></div></section>` },
+    { label:'Icon Row', html:`<section data-block data-label="Features — Icon Row" style="background:var(--surface);padding:6vw 6vw;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;text-align:center">
+      <div><div style="width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:18px">⚡</div><div contenteditable="true" style="font-size:13px;font-weight:600">Fast</div></div>
+      <div><div style="width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:18px">🎨</div><div contenteditable="true" style="font-size:13px;font-weight:600">Flexible</div></div>
+      <div><div style="width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:18px">🔒</div><div contenteditable="true" style="font-size:13px;font-weight:600">Private</div></div>
+      <div><div style="width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:18px">📦</div><div contenteditable="true" style="font-size:13px;font-weight:600">Portable</div></div></section>` },
+    { label:'Alternating', html:`<section data-block data-label="Features — Alternating" style="background:var(--surface);padding:6vw 6vw;display:flex;flex-direction:column;gap:36px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center">
+        <img data-img-editable="true" src="${placeholderImg(360,240)}" style="width:100%;border-radius:var(--radius);cursor:pointer">
+        <div><h3 contenteditable="true" style="font-size:20px">Built to be moved around</h3><p contenteditable="true" style="margin-top:8px;opacity:.68;font-size:14px">Drag it, duplicate it, delete it — nothing's locked in place.</p></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center">
+        <div style="order:2"><h3 contenteditable="true" style="font-size:20px">Themed without the rework</h3><p contenteditable="true" style="margin-top:8px;opacity:.68;font-size:14px">Change the palette once, everything follows.</p></div>
+        <img data-img-editable="true" src="${placeholderImg(360,240)}" style="width:100%;border-radius:var(--radius);cursor:pointer;order:1">
+      </div></section>` }
+  ],
+  stats:[
+    { label:'Row of 4', html:`<section data-block data-label="Stats — Row" style="background:var(--bg);padding:6vw 6vw;display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center">
+      <div><div contenteditable="true" style="font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700">12k</div><div contenteditable="true" class="eyebrow" style="margin-top:6px">Pages built</div></div>
+      <div><div contenteditable="true" style="font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700">98%</div><div contenteditable="true" class="eyebrow" style="margin-top:6px">Would recommend</div></div>
+      <div><div contenteditable="true" style="font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700">4 min</div><div contenteditable="true" class="eyebrow" style="margin-top:6px">Avg. build time</div></div>
+      <div><div contenteditable="true" style="font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700">0</div><div contenteditable="true" class="eyebrow" style="margin-top:6px">Lines of code needed</div></div></section>` },
+    { label:'Big Single', html:`<section data-block data-label="Stats — Big Single" style="background:var(--bg);padding:7vw 6vw;text-align:center">
+      <div contenteditable="true" style="font-family:var(--font-display);font-size:clamp(3.5rem,10vw,7rem);font-weight:800;color:var(--accent)">10x</div>
+      <p contenteditable="true" style="margin-top:10px;max-width:36ch;margin-left:auto;margin-right:auto;opacity:.68">faster than starting from a blank page, by our very unscientific count.</p></section>` },
+    { label:'Comparison', html:`<section data-block data-label="Stats — Comparison" style="background:var(--bg);padding:6vw 6vw;max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+      <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span contenteditable="true">This builder</span><span contenteditable="true">4 min</span></div><div style="height:8px;border-radius:4px;background:var(--surface)"><div style="height:100%;width:15%;border-radius:4px;background:var(--accent)"></div></div></div>
+      <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span contenteditable="true">Hiring a freelancer</span><span contenteditable="true">2 weeks</span></div><div style="height:8px;border-radius:4px;background:var(--surface)"><div style="height:100%;width:100%;border-radius:4px;background:var(--muted)"></div></div></div></section>` }
+  ],
+  testimonial:[
+    { label:'Quote', html:`<section data-block data-label="Testimonial — Quote" style="background:var(--bg);padding:7vw 6vw;text-align:center">
+      <p contenteditable="true" style="font-family:var(--font-display);font-size:clamp(1.3rem,3vw,2rem);max-width:32ch;margin:0 auto;line-height:1.3">"We replaced three tools and a freelancer with one afternoon."</p>
+      <div contenteditable="true" style="margin-top:18px;opacity:.6;font-size:13px">— Dana Reyes, Founder</div></section>` },
+    { label:'Card', html:`<section data-block data-label="Testimonial — Card" style="background:var(--bg);padding:6vw 6vw">
+      <div class="card" style="max-width:520px;margin:0 auto;display:flex;gap:16px;align-items:flex-start">
+        <img data-img-editable="true" src="${placeholderImg(120,120)}" alt="Avatar" style="width:52px;height:52px;border-radius:50%;object-fit:cover;cursor:pointer;flex-shrink:0">
+        <div><p contenteditable="true" style="opacity:.85">"The section library alone saved us a redesign."</p><div contenteditable="true" style="margin-top:10px;font-size:12.5px;opacity:.6">Priya N., Head of Product</div></div>
+      </div></section>` },
+    { label:'Trio', html:`<section data-block data-label="Testimonial — Trio" style="background:var(--bg);padding:6vw 6vw;display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+      <div class="card"><p contenteditable="true" style="font-size:14px;opacity:.85">"Clean output, no bloat."</p><div contenteditable="true" style="margin-top:10px;font-size:12px;opacity:.6">— R. Kim</div></div>
+      <div class="card"><p contenteditable="true" style="font-size:14px;opacity:.85">"Themes actually feel different."</p><div contenteditable="true" style="margin-top:10px;font-size:12px;opacity:.6">— A. Fischer</div></div>
+      <div class="card"><p contenteditable="true" style="font-size:14px;opacity:.85">"Exported it straight to prod."</p><div contenteditable="true" style="margin-top:10px;font-size:12px;opacity:.6">— J. Oyelaran</div></div></section>` },
+    { label:'Logo Strip', html:`<section data-block data-label="Testimonial — Logo Strip" style="background:var(--surface);padding:5vw 6vw;text-align:center">
+      <div class="eyebrow" contenteditable="true" style="margin-bottom:20px">Trusted by teams at</div>
+      <div style="display:flex;justify-content:center;gap:36px;flex-wrap:wrap;font-family:var(--font-display);font-weight:700;font-size:16px;opacity:.55">
+        <span contenteditable="true">Northwind</span><span contenteditable="true">Fictive Co.</span><span contenteditable="true">Kestrel</span><span contenteditable="true">Vantage</span>
+      </div></section>` }
+  ],
+  pricing:[
+    { label:'Tiers', html:`<section data-block data-label="Pricing — Tiers" style="background:var(--surface);padding:7vw 6vw;display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+      <div class="card"><div class="eyebrow" contenteditable="true">Starter</div><div contenteditable="true" style="font-size:28px;font-weight:700;margin-top:8px">$0</div><p contenteditable="true" style="margin-top:10px;opacity:.65;font-size:13px">For trying things out.</p></div>
+      <div class="card" style="border:2px solid var(--accent)"><div class="eyebrow" contenteditable="true">Studio</div><div contenteditable="true" style="font-size:28px;font-weight:700;margin-top:8px">$24/mo</div><p contenteditable="true" style="margin-top:10px;opacity:.65;font-size:13px">For shipping real pages.</p></div>
+      <div class="card"><div class="eyebrow" contenteditable="true">Team</div><div contenteditable="true" style="font-size:28px;font-weight:700;margin-top:8px">$89/mo</div><p contenteditable="true" style="margin-top:10px;opacity:.65;font-size:13px">For more than one builder.</p></div></section>` },
+    { label:'Two Column', html:`<section data-block data-label="Pricing — Two Column" style="background:var(--surface);padding:7vw 6vw;display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:760px;margin:0 auto">
+      <div class="card"><div class="eyebrow" contenteditable="true">Monthly</div><div contenteditable="true" style="font-size:32px;font-weight:700;margin-top:8px">$29</div><p contenteditable="true" style="margin-top:10px;opacity:.65;font-size:13px">Billed every month.</p><div class="btn" contenteditable="true" style="margin-top:16px;text-align:center;display:block">Choose monthly</div></div>
+      <div class="card" style="border:2px solid var(--accent)"><div class="eyebrow" contenteditable="true">Yearly</div><div contenteditable="true" style="font-size:32px;font-weight:700;margin-top:8px">$19/mo</div><p contenteditable="true" style="margin-top:10px;opacity:.65;font-size:13px">Billed once a year — save 35%.</p><div class="btn" contenteditable="true" style="margin-top:16px;text-align:center;display:block">Choose yearly</div></div></section>` },
+    { label:'Single Highlight', html:`<section data-block data-label="Pricing — Single" style="background:var(--surface);padding:7vw 6vw;text-align:center">
+      <div class="card" style="max-width:360px;margin:0 auto;border:2px solid var(--accent)"><div class="eyebrow" contenteditable="true">One plan, everything included</div><div contenteditable="true" style="font-size:40px;font-weight:800;margin-top:10px">$39<span style="font-size:14px;font-weight:400;opacity:.6">/mo</span></div><p contenteditable="true" style="margin-top:12px;opacity:.65;font-size:13px">No tiers to compare. No add-ons to find later.</p><div class="btn" contenteditable="true" style="margin-top:18px">Get started</div></div></section>` }
+  ],
+  gallery:[
+    { label:'Grid of 3', html:`<section data-block data-label="Gallery" style="background:var(--bg);padding:6vw 6vw;display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+      <img data-img-editable="true" src="${placeholderImg(320,240)}" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--radius);cursor:pointer">
+      <img data-img-editable="true" src="${placeholderImg(320,240)}" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--radius);cursor:pointer">
+      <img data-img-editable="true" src="${placeholderImg(320,240)}" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--radius);cursor:pointer"></section>` },
+    { label:'Grid of 4', html:`<section data-block data-label="Gallery — Grid of 4" style="background:var(--bg);padding:6vw 6vw;display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+      <img data-img-editable="true" src="${placeholderImg(260,260)}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius);cursor:pointer">
+      <img data-img-editable="true" src="${placeholderImg(260,260)}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius);cursor:pointer">
+      <img data-img-editable="true" src="${placeholderImg(260,260)}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius);cursor:pointer">
+      <img data-img-editable="true" src="${placeholderImg(260,260)}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius);cursor:pointer"></section>` },
+    { label:'Feature Strip', html:`<section data-block data-label="Gallery — Feature Strip" style="background:var(--bg);padding:6vw 6vw;display:grid;grid-template-columns:2fr 1fr;gap:14px">
+      <img data-img-editable="true" src="${placeholderImg(480,360)}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);cursor:pointer">
+      <div style="display:grid;grid-template-rows:1fr 1fr 1fr;gap:14px">
+        <img data-img-editable="true" src="${placeholderImg(200,110)}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);cursor:pointer">
+        <img data-img-editable="true" src="${placeholderImg(200,110)}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);cursor:pointer">
+        <img data-img-editable="true" src="${placeholderImg(200,110)}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);cursor:pointer">
+      </div></section>` }
+  ],
+  cta:[
+    { label:'Banner', html:`<section data-block data-label="Call to action" style="background:var(--ink);padding:6vw 6vw;text-align:center">
+      <h2 contenteditable="true" style="color:var(--bg);font-size:clamp(1.6rem,4vw,2.6rem);max-width:20ch;margin:0 auto">Ready to put this in front of people?</h2>
+      <div class="btn" contenteditable="true" style="margin-top:22px">Export the page</div></section>` },
+    { label:'With Email', html:`<section data-block data-label="Call to action — Email" style="background:var(--surface);padding:6vw 6vw;display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap">
+      <h2 contenteditable="true" style="font-size:clamp(1.4rem,3vw,2rem);max-width:20ch">Get the next update first.</h2>
+      <div style="display:flex;gap:10px">
+        <div contenteditable="true" style="background:var(--bg);border:1px solid rgba(0,0,0,.12);border-radius:calc(var(--radius) / 2);padding:10px 14px;opacity:.55;font-size:13px;min-width:200px">you@email.com</div>
+        <div class="btn" contenteditable="true">Subscribe</div>
+      </div></section>` },
+    { label:'Gradient Banner', html:`<section data-block data-label="Call to action — Gradient" style="padding:7vw 6vw;text-align:center;background:linear-gradient(120deg,var(--accent),var(--surface));background-size:200% 200%;animation:gradientShift calc(8s / var(--speed)) ease-in-out infinite alternate">
+      <h2 contenteditable="true" style="font-size:clamp(1.6rem,4vw,2.6rem);max-width:20ch;margin:0 auto;color:var(--accent-ink)">One click closer to done.</h2>
+      <div class="btn" contenteditable="true" style="margin-top:22px;background:var(--ink);color:var(--bg)">Let's go</div></section>` }
+  ],
+  stats:[
+    { label:'Row of 4', html:`<section data-block data-label="Stats — Row" style="background:var(--bg);padding:6vw 6vw;display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center">
+      <div><div contenteditable="true" style="font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700">12k</div><div contenteditable="true" class="eyebrow" style="margin-top:6px">Pages built</div></div>
+      <div><div contenteditable="true" style="font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700">98%</div><div contenteditable="true" class="eyebrow" style="margin-top:6px">Would recommend</div></div>
+      <div><div contenteditable="true" style="font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700">4 min</div><div contenteditable="true" class="eyebrow" style="margin-top:6px">Avg. build time</div></div>
+      <div><div contenteditable="true" style="font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700">0</div><div contenteditable="true" class="eyebrow" style="margin-top:6px">Lines of code needed</div></div></section>` }
+  ],
+  faq:[
+    { label:'List', html:`<section data-block data-label="FAQ — List" style="background:var(--surface);padding:6vw 6vw">
+      <h2 contenteditable="true" style="font-size:clamp(1.6rem,3.5vw,2.2rem);margin-bottom:24px">Questions people actually ask.</h2>
+      <div style="border-top:1px solid rgba(0,0,0,.1)">
+        <div style="padding:16px 0;border-bottom:1px solid rgba(0,0,0,.1)"><div contenteditable="true" style="font-weight:600">Can I export this as a real file?</div><div contenteditable="true" style="margin-top:6px;opacity:.68;font-size:14px">Yes — one plain HTML file, no build step.</div></div>
+        <div style="padding:16px 0;border-bottom:1px solid rgba(0,0,0,.1)"><div contenteditable="true" style="font-weight:600">Do I need to know how to code?</div><div contenteditable="true" style="margin-top:6px;opacity:.68;font-size:14px">No — click, type, drag. That's the whole workflow.</div></div>
+        <div style="padding:16px 0"><div contenteditable="true" style="font-weight:600">Can I change my mind about the theme later?</div><div contenteditable="true" style="margin-top:6px;opacity:.68;font-size:14px">Anytime — every section adapts automatically.</div></div>
+      </div></section>` },
+    { label:'Two Column', html:`<section data-block data-label="FAQ — Two Column" style="background:var(--surface);padding:6vw 6vw;display:grid;grid-template-columns:1fr 1fr;gap:24px">
+      <div><div contenteditable="true" style="font-weight:600">Is there a free plan?</div><p contenteditable="true" style="margin-top:6px;opacity:.68;font-size:14px">Yes, forever — this whole builder is free to use.</p></div>
+      <div><div contenteditable="true" style="font-weight:600">Can I self-host the export?</div><p contenteditable="true" style="margin-top:6px;opacity:.68;font-size:14px">It's one HTML file — put it anywhere that serves static files.</p></div>
+      <div><div contenteditable="true" style="font-weight:600">What about SEO?</div><p contenteditable="true" style="margin-top:6px;opacity:.68;font-size:14px">Add your own meta tags after exporting — it's just HTML.</p></div>
+      <div><div contenteditable="true" style="font-weight:600">Is my content private?</div><p contenteditable="true" style="margin-top:6px;opacity:.68;font-size:14px">Everything lives in your browser until you export or save it.</p></div></section>` },
+    { label:'Numbered', html:`<section data-block data-label="FAQ — Numbered" style="background:var(--surface);padding:6vw 6vw;max-width:640px;margin:0 auto">
+      <div style="display:flex;gap:16px;padding:14px 0;border-bottom:1px solid rgba(0,0,0,.1)"><span class="eyebrow">01</span><div><div contenteditable="true" style="font-weight:600">How long does a page take?</div><p contenteditable="true" style="margin-top:6px;opacity:.68;font-size:14px">Most people are done in under ten minutes.</p></div></div>
+      <div style="display:flex;gap:16px;padding:14px 0"><span class="eyebrow">02</span><div><div contenteditable="true" style="font-weight:600">Do themes limit what I can say?</div><p contenteditable="true" style="margin-top:6px;opacity:.68;font-size:14px">No — every word stays fully editable regardless of theme.</p></div></div></section>` }
+  ],
+  contact:[
+    { label:'Form', html:`<section data-block data-label="Contact — Form" style="background:var(--bg);padding:6vw 6vw;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start">
+      <div><h2 contenteditable="true" style="font-size:clamp(1.6rem,3.5vw,2.2rem)">Say hello.</h2><p contenteditable="true" style="margin-top:12px;opacity:.68;max-width:32ch">Fill it in, or wire it up to whatever you use for forms.</p></div>
+      <div class="card" style="display:flex;flex-direction:column;gap:12px">
+        <div contenteditable="true" style="background:var(--bg);border:1px solid rgba(0,0,0,.12);border-radius:calc(var(--radius) / 2);padding:10px 12px;opacity:.55;font-size:13px">Your name</div>
+        <div contenteditable="true" style="background:var(--bg);border:1px solid rgba(0,0,0,.12);border-radius:calc(var(--radius) / 2);padding:10px 12px;opacity:.55;font-size:13px">Email address</div>
+        <div contenteditable="true" style="background:var(--bg);border:1px solid rgba(0,0,0,.12);border-radius:calc(var(--radius) / 2);padding:24px 12px;opacity:.55;font-size:13px">Message</div>
+        <div class="btn" contenteditable="true" style="text-align:center">Send message</div>
+      </div></section>` },
+    { label:'Centered', html:`<section data-block data-label="Contact — Centered" style="background:var(--bg);padding:7vw 6vw;text-align:center">
+      <h2 contenteditable="true" style="font-size:clamp(1.6rem,3.5vw,2.2rem)">Get in touch</h2>
+      <p contenteditable="true" style="margin-top:10px;opacity:.68">We read every message, promise.</p>
+      <div class="card" style="max-width:420px;margin:24px auto 0;display:flex;flex-direction:column;gap:12px;text-align:left">
+        <div contenteditable="true" style="background:var(--bg);border:1px solid rgba(0,0,0,.12);border-radius:calc(var(--radius) / 2);padding:10px 12px;opacity:.55;font-size:13px">Email address</div>
+        <div class="btn" contenteditable="true" style="text-align:center">Notify me</div>
+      </div></section>` },
+    { label:'With Details', html:`<section data-block data-label="Contact — Details" style="background:var(--bg);padding:6vw 6vw;display:grid;grid-template-columns:1fr 1fr;gap:40px">
+      <div>
+        <h2 contenteditable="true" style="font-size:clamp(1.6rem,3.5vw,2.2rem)">Reach us directly</h2>
+        <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px;font-size:14px">
+          <div><span class="eyebrow">Email</span><div contenteditable="true">hello@studio.com</div></div>
+          <div><span class="eyebrow">Phone</span><div contenteditable="true">+1 (555) 010-0199</div></div>
+          <div><span class="eyebrow">Studio</span><div contenteditable="true">14 Foundry Lane</div></div>
+        </div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:12px">
+        <div contenteditable="true" style="background:var(--bg);border:1px solid rgba(0,0,0,.12);border-radius:calc(var(--radius) / 2);padding:10px 12px;opacity:.55;font-size:13px">Your name</div>
+        <div contenteditable="true" style="background:var(--bg);border:1px solid rgba(0,0,0,.12);border-radius:calc(var(--radius) / 2);padding:24px 12px;opacity:.55;font-size:13px">Message</div>
+        <div class="btn" contenteditable="true" style="text-align:center">Send</div>
+      </div></section>` }
+  ],
+  video:[
+    { label:'Single', html:`<section data-block data-label="Video — Single" style="background:var(--bg);padding:6vw 6vw;text-align:center">
+      <h2 contenteditable="true" style="font-size:clamp(1.6rem,3.5vw,2.2rem);max-width:20ch;margin:0 auto">See it in about ninety seconds.</h2>
+      <div class="video-frame" data-video-editable="true" style="position:relative;max-width:720px;margin:26px auto 0;border-radius:var(--radius);overflow:hidden;background:#000">
+        <video class="vid-el" poster="${placeholderImg(720,405)}" style="width:100%;display:block" muted loop playsinline></video>
+        <div class="video-upload-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.15);cursor:pointer"><div style="width:64px;height:64px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:var(--accent-ink);font-size:22px">▶</div></div>
+        <button type="button" class="video-replace-btn" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer;display:none">Replace</button>
+      </div></section>` },
+    { label:'Duo', html:`<section data-block data-label="Video — Duo" style="background:var(--bg);padding:6vw 6vw;display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="video-frame" data-video-editable="true" style="position:relative;border-radius:var(--radius);overflow:hidden;background:#000">
+        <video class="vid-el" poster="${placeholderImg(360,240)}" style="width:100%;display:block" muted loop playsinline></video>
+        <div class="video-upload-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.15);cursor:pointer"><div style="width:48px;height:48px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:var(--accent-ink);font-size:16px">▶</div></div>
+        <button type="button" class="video-replace-btn" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:10.5px;cursor:pointer;display:none">Replace</button>
+      </div>
+      <div class="video-frame" data-video-editable="true" style="position:relative;border-radius:var(--radius);overflow:hidden;background:#000">
+        <video class="vid-el" poster="${placeholderImg(360,240)}" style="width:100%;display:block" muted loop playsinline></video>
+        <div class="video-upload-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.15);cursor:pointer"><div style="width:48px;height:48px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:var(--accent-ink);font-size:16px">▶</div></div>
+        <button type="button" class="video-replace-btn" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:10.5px;cursor:pointer;display:none">Replace</button>
+      </div></section>` },
+    { label:'Full Width', html:`<section data-block data-label="Video — Full Width" style="background:#000">
+      <div class="video-frame" data-video-editable="true" style="position:relative">
+        <video class="vid-el" poster="${placeholderImg(1200,500)}" style="width:100%;display:block;max-height:70vh;object-fit:cover" muted loop playsinline></video>
+        <div class="video-upload-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.2);cursor:pointer"><div style="width:70px;height:70px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:var(--accent-ink);font-size:24px">▶</div></div>
+        <button type="button" class="video-replace-btn" style="position:absolute;top:14px;right:14px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer;display:none">Replace</button>
+      </div></section>` }
+  ],
+  footer:[
+    { label:'Columns', html:`<section data-block data-label="Footer — Columns" style="background:var(--surface);padding:5vw 6vw;display:grid;grid-template-columns:2fr 1fr 1fr;gap:20px;font-size:13px">
+      <div contenteditable="true" style="font-family:var(--font-display);font-weight:700">Studio Name</div>
+      <div><div contenteditable="true" style="opacity:.5;margin-bottom:8px" class="eyebrow">Site</div><div contenteditable="true" style="opacity:.7">Work</div><div contenteditable="true" style="opacity:.7;margin-top:4px">About</div></div>
+      <div><div contenteditable="true" style="opacity:.5;margin-bottom:8px" class="eyebrow">Contact</div><div contenteditable="true" style="opacity:.7">hello@studio.com</div></div></section>` },
+    { label:'Simple', html:`<section data-block data-label="Footer — Simple" style="background:var(--surface);padding:4vw 6vw;text-align:center;font-size:12px;opacity:.6">
+      <span contenteditable="true">© Studio Name 2026 — built in an afternoon</span></section>` },
+    { label:'Marquee', html:`<section data-block data-label="Footer — Marquee" style="background:var(--surface);padding:4vw 0;overflow:hidden">
+      <div style="white-space:nowrap;overflow:hidden">
+        <div style="display:inline-block;animation:marquee calc(16s / var(--speed)) linear infinite;font-family:var(--font-display);font-weight:700;font-size:clamp(1.2rem,3vw,2rem)">
+          <span contenteditable="true">LET'S BUILD SOMETHING · LET'S BUILD SOMETHING · LET'S BUILD SOMETHING&nbsp;·&nbsp;</span><span aria-hidden="true">LET'S BUILD SOMETHING · LET'S BUILD SOMETHING · LET'S BUILD SOMETHING&nbsp;·&nbsp;</span>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:20px;font-size:12px;opacity:.6"><span contenteditable="true">© Studio Name 2026</span></div></section>` },
+    { label:'Wave', html:`<section data-block data-label="Footer — Wave" style="background:var(--surface)">
+      <svg viewBox="0 0 500 40" preserveAspectRatio="none" style="width:100%;height:40px;display:block"><path d="M0 20 Q125 0 250 20 T500 20 V0 H0 Z" fill="var(--bg)"></path></svg>
+      <div style="padding:4vw 6vw;display:flex;justify-content:space-between;align-items:center;font-size:13px">
+        <span contenteditable="true" style="font-family:var(--font-display);font-weight:700">Studio Name</span>
+        <span contenteditable="true" style="opacity:.6">© 2026 — made with sections</span>
+      </div></section>` },
+    { label:'Newsletter', html:`<section data-block data-label="Footer — Newsletter" style="background:var(--surface);padding:5vw 6vw;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;font-size:13px">
+      <div><div contenteditable="true" style="font-family:var(--font-display);font-weight:700">Studio Name</div><div contenteditable="true" style="opacity:.6;margin-top:4px">© 2026 — occasional emails, no spam</div></div>
+      <div style="display:flex;gap:10px"><div contenteditable="true" style="background:var(--bg);border:1px solid rgba(0,0,0,.12);border-radius:calc(var(--radius) / 2);padding:8px 12px;opacity:.55;font-size:12.5px">you@email.com</div><div class="btn" contenteditable="true" style="padding:8px 16px;font-size:12.5px">Join</div></div></section>` },
+    { label:'Minimal Links', html:`<section data-block data-label="Footer — Minimal Links" style="background:var(--surface);padding:4vw 6vw;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;opacity:.75">
+      <span contenteditable="true">© Studio Name 2026</span>
+      <div style="display:flex;gap:18px"><span contenteditable="true">Privacy</span><span contenteditable="true">Terms</span><span contenteditable="true">Contact</span></div></section>` }
+  ]
+};
+const ROLE_LABELS = { nav:'Navigation', hero:'Hero', features:'Features', stats:'Stats', testimonial:'Testimonial', pricing:'Pricing', gallery:'Gallery', faq:'FAQ', contact:'Contact', video:'Video', cta:'Call to action', footer:'Footer' };
+
+/* ================= state ================= */
+let currentThemeKey = 'blueprint';
+let currentName = null;
+let selectedEl = null;
+let pendingImgTarget = null;
+let pendingVideoTarget = null;
+let history = [];
+let historyIndex = -1;
+let suppressHistory = false;
+
+/* ================= refs ================= */
+const preview = document.getElementById('preview');
+const statusText = document.getElementById('statusText');
+const vpToggle = document.getElementById('vpToggle');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+const toolbar = document.getElementById('toolbar');
+const layersEl = document.getElementById('layersList');
+const layersEmpty = document.getElementById('layersEmpty');
+const savedListEl = document.getElementById('savedList');
+const savedEmpty = document.getElementById('savedEmpty');
+const modalOverlay = document.getElementById('modalOverlay');
+const modalInput = document.getElementById('modalInput');
+const imgFileInput = document.getElementById('imgFileInput');
+const videoFileInput = document.getElementById('videoFileInput');
+
+/* ================= toast ================= */
+function showToast(msg){
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  wrap.appendChild(t);
+  requestAnimationFrame(()=> t.classList.add('show'));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=> t.remove(), 250); }, 2200);
+}
+
+/* ================= history ================= */
+function snapshotState(){
+  if(suppressHistory) return;
+  const doc = preview.contentDocument;
+  if(!doc) return;
+  const html = doc.documentElement.outerHTML;
+  history = history.slice(0, historyIndex+1);
+  if(history[historyIndex] === html) return;
+  history.push(html);
+  if(history.length > 60) history.shift();
+  historyIndex = history.length-1;
+  updateUndoRedoButtons();
+}
+function restoreSnapshot(html){
+  suppressHistory = true;
+  preview.srcdoc = html;
+  preview.onload = ()=>{
+    attachSelection();
+    buildLayers();
+    syncThemeCardFromDoc();
+    suppressHistory = false;
+  };
+}
+function undo(){ if(historyIndex<=0) return; historyIndex--; restoreSnapshot(history[historyIndex]); updateUndoRedoButtons(); showToast('Undid last change'); }
+function redo(){ if(historyIndex>=history.length-1) return; historyIndex++; restoreSnapshot(history[historyIndex]); updateUndoRedoButtons(); showToast('Redid change'); }
+function updateUndoRedoButtons(){ undoBtn.disabled = historyIndex<=0; redoBtn.disabled = historyIndex>=history.length-1; }
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+document.addEventListener('keydown', e=>{
+  const mod = e.ctrlKey || e.metaKey;
+  if(!mod) return;
+  const k = e.key.toLowerCase();
+  if(k==='z' && !e.shiftKey){ e.preventDefault(); undo(); }
+  else if(k==='y' || (k==='z' && e.shiftKey)){ e.preventDefault(); redo(); }
+});
+
+/* ================= themes ================= */
+function renderThemes(){
+  const wrap = document.getElementById('themeList');
+  wrap.innerHTML = '';
+  Object.entries(THEMES).forEach(([key,t])=>{
+    const card = document.createElement('div');
+    card.className = 'theme-card';
+    card.dataset.key = key;
+    card.innerHTML = `<div class="theme-swatch" style="background:${t.swatch}"></div><div class="theme-name">${t.name}</div>`;
+    card.addEventListener('click', ()=> setTheme(key));
+    wrap.appendChild(card);
+  });
+}
+function applyTheme(doc, key){
+  const t = THEMES[key];
+  const el = doc.documentElement;
+  el.style.setProperty('--bg', t.bg);
+  el.style.setProperty('--ink', t.ink);
+  el.style.setProperty('--muted', t.muted);
+  el.style.setProperty('--accent', t.accent);
+  el.style.setProperty('--accent-ink', t.accentInk);
+  el.style.setProperty('--surface', t.surface);
+  el.style.setProperty('--radius', t.radius);
+  el.style.setProperty('--font-display', t.fontDisplay);
+  el.style.setProperty('--font-body', t.fontBody);
+  const link = doc.getElementById('themeFontLink');
+  if(link) link.href = googleFontsHref(t.fontImport);
+}
+function setTheme(key, isInit){
+  currentThemeKey = key;
+  document.querySelectorAll('.theme-card').forEach(c=> c.classList.toggle('active', c.dataset.key===key));
+  const doc = preview.contentDocument;
+  if(doc) applyTheme(doc, key);
+  document.getElementById('customAccent').value = THEMES[key].accent;
+  if(!isInit) snapshotState();
+}
+document.getElementById('customAccent').addEventListener('input', e=>{
+  const doc = preview.contentDocument;
+  if(doc) doc.documentElement.style.setProperty('--accent', e.target.value);
+  document.querySelectorAll('.theme-card').forEach(c=> c.classList.remove('active'));
+});
+document.getElementById('customAccent').addEventListener('change', ()=> snapshotState());
+function syncThemeCardFromDoc(){
+  const doc = preview.contentDocument;
+  if(!doc) return;
+  const val = getComputedStyle(doc.documentElement).getPropertyValue('--accent').trim();
+  let match = Object.entries(THEMES).find(([k,t])=> t.accent.toLowerCase()===val.toLowerCase());
+  document.querySelectorAll('.theme-card').forEach(c=> c.classList.toggle('active', match && c.dataset.key===match[0]));
+}
+
+/* ================= library ================= */
+function renderLibrary(){
+  const wrap = document.getElementById('libraryList');
+  wrap.innerHTML = '';
+  Object.entries(SECTIONS).forEach(([role, variants])=>{
+    const group = document.createElement('div');
+    group.className = 'lib-role';
+    group.innerHTML = `<div class="lib-role-title">${ROLE_LABELS[role]||role}</div>`;
+    const row = document.createElement('div');
+    row.className = 'lib-variants';
+    variants.forEach((v, idx)=>{
+      const btn = document.createElement('button');
+      btn.className = 'lib-add';
+      btn.textContent = '+ ' + v.label;
+      btn.addEventListener('click', ()=> addSection(role, idx));
+      row.appendChild(btn);
+    });
+    group.appendChild(row);
+    wrap.appendChild(group);
+  });
+}
+function addSection(role, idx){
+  const doc = preview.contentDocument;
+  if(!doc) return;
+  const def = SECTIONS[role][idx];
+  doc.body.insertAdjacentHTML('beforeend', def.html);
+  const blocks = [...doc.querySelectorAll('body > [data-block]')];
+  const added = blocks[blocks.length-1];
+  added.querySelectorAll('[contenteditable]').forEach(wireEditable);
+  added.querySelectorAll('[data-img-editable]').forEach(wireImage);
+  added.querySelectorAll('[data-video-editable]').forEach(wireVideo);
+  buildLayers();
+  snapshotState();
+  showToast(def.label + ' section added');
+}
+
+/* ================= layers / page structure ================= */
+function buildLayers(){
+  const doc = preview.contentDocument;
+  if(!doc) return;
+  const blocks = [...doc.querySelectorAll('body > [data-block]')];
+  layersEl.innerHTML = '';
+  layersEmpty.style.display = blocks.length ? 'none' : 'block';
+  blocks.forEach((block, i)=>{
+    const row = document.createElement('div');
+    row.className = 'layer';
+    row.draggable = true;
+    row.dataset.index = i;
+    row.innerHTML = `<span class="handle">⠿</span><span class="lidx">${String(i+1).padStart(2,'0')}</span><span class="lname">${block.dataset.label}</span>
+      <span class="layer-actions"><button class="lbtn bg" title="Cycle background">🎨</button><button class="lbtn dup" title="Duplicate">⧉</button><button class="lbtn del" title="Delete">✕</button></span>`;
+    row.addEventListener('dragstart', e=> e.dataTransfer.setData('text/plain', i));
+    row.addEventListener('dragover', e=>{ e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', ()=> row.classList.remove('drag-over'));
+    row.addEventListener('drop', e=>{
+      e.preventDefault(); row.classList.remove('drag-over');
+      const from = parseInt(e.dataTransfer.getData('text/plain'),10);
+      const to = parseInt(row.dataset.index,10);
+      reorderBlocks(from, to);
+    });
+    row.querySelector('.bg').addEventListener('click', e=>{ e.stopPropagation(); cycleSectionBg(i); });
+    row.querySelector('.dup').addEventListener('click', e=>{ e.stopPropagation(); duplicateBlock(i); });
+    row.querySelector('.del').addEventListener('click', e=>{ e.stopPropagation(); deleteBlock(i); });
+    layersEl.appendChild(row);
+  });
+}
+const BG_CYCLE = ['var(--bg)','var(--surface)','var(--ink)'];
+function cycleSectionBg(index){
+  const doc = preview.contentDocument;
+  const blocks = [...doc.querySelectorAll('body > [data-block]')];
+  const block = blocks[index];
+  const existingImage = getComputedStyle(block).backgroundImage;
+  if(existingImage && existingImage !== 'none'){
+    showToast("This section has a custom background — can't cycle it");
+    return;
+  }
+  const current = parseInt(block.dataset.bgStep || '0', 10);
+  const next = (current + 1) % BG_CYCLE.length;
+  block.style.backgroundColor = BG_CYCLE[next];
+  block.style.color = next === 2 ? 'var(--bg)' : 'var(--ink)';
+  block.dataset.bgStep = next;
+  snapshotState();
+  showToast('Background updated');
+}
+function reorderBlocks(from, to){
+  if(from===to) return;
+  const doc = preview.contentDocument;
+  const blocks = [...doc.querySelectorAll('body > [data-block]')];
+  const moved = blocks[from];
+  if(to===blocks.length-1) doc.body.appendChild(moved);
+  else doc.body.insertBefore(moved, blocks[to>from ? to+1 : to]);
+  buildLayers();
+  snapshotState();
+}
+function duplicateBlock(index){
+  const doc = preview.contentDocument;
+  const blocks = [...doc.querySelectorAll('body > [data-block]')];
+  const block = blocks[index];
+  const clone = block.cloneNode(true);
+  block.after(clone);
+  clone.querySelectorAll('[contenteditable]').forEach(wireEditable);
+  clone.querySelectorAll('[data-img-editable]').forEach(wireImage);
+  clone.querySelectorAll('[data-video-editable]').forEach(wireVideo);
+  buildLayers();
+  snapshotState();
+  showToast('Section duplicated');
+}
+function deleteBlock(index){
+  const doc = preview.contentDocument;
+  const blocks = [...doc.querySelectorAll('body > [data-block]')];
+  blocks[index].remove();
+  buildLayers();
+  snapshotState();
+  showToast('Section deleted');
+}
+
+/* ================= selection / editing ================= */
+function syncToolbarToSelection(el){
+  const cs = getComputedStyle(el);
+  toolbar.querySelectorAll('.align-btn').forEach(b=>{
+    const matches = b.dataset.a===cs.textAlign || (b.dataset.a==='left' && (cs.textAlign==='start'||cs.textAlign===''));
+    b.classList.toggle('on', matches);
+  });
+  toolbar.querySelector('[data-style="bold"]').classList.toggle('on', parseInt(cs.fontWeight,10)>=700);
+  toolbar.querySelector('[data-style="italic"]').classList.toggle('on', cs.fontStyle==='italic');
+  const fontSel = document.getElementById('fontSelect');
+  let matched = false;
+  for(const opt of fontSel.options){
+    const first = opt.value.split(',')[0].replace(/'/g,'');
+    if(cs.fontFamily.includes(first)){ fontSel.value = opt.value; matched = true; break; }
+  }
+  if(!matched) fontSel.selectedIndex = 0;
+}
+function wireEditable(el){
+  el.addEventListener('click', e=>{
+    e.stopPropagation();
+    if(selectedEl) selectedEl.classList.remove('sel-active');
+    selectedEl = el;
+    el.classList.add('sel-active');
+    const r = el.getBoundingClientRect();
+    const ir = preview.getBoundingClientRect();
+    toolbar.style.display = 'flex';
+    toolbar.style.left = Math.max(8, Math.min(window.innerWidth-350, ir.left + r.left)) + 'px';
+    toolbar.style.top = Math.max(8, ir.top + r.top - 46) + 'px';
+    syncToolbarToSelection(el);
+  });
+  el.addEventListener('blur', ()=> snapshotState());
+}
+function wireImage(el){
+  el.style.cursor = 'pointer';
+  el.addEventListener('click', e=>{
+    e.stopPropagation();
+    pendingImgTarget = el;
+    imgFileInput.click();
+  });
+}
+function wireVideo(frame){
+  const hint = frame.querySelector('.video-upload-hint');
+  const btn = frame.querySelector('.video-replace-btn');
+  const vid = frame.querySelector('.vid-el');
+  if(!hint || !vid) return;
+  hint.addEventListener('click', e=>{ e.stopPropagation(); pendingVideoTarget = vid; videoFileInput.click(); });
+  if(btn) btn.addEventListener('click', e=>{ e.stopPropagation(); pendingVideoTarget = vid; videoFileInput.click(); });
+}
+function attachSelection(){
+  const doc = preview.contentDocument;
+  if(!doc) return;
+  doc.querySelectorAll('[contenteditable]').forEach(wireEditable);
+  doc.querySelectorAll('[data-img-editable]').forEach(wireImage);
+  doc.querySelectorAll('[data-video-editable]').forEach(wireVideo);
+  doc.body.addEventListener('click', ()=>{
+    if(selectedEl){ selectedEl.classList.remove('sel-active'); selectedEl = null; }
+    toolbar.style.display = 'none';
+  });
+}
+imgFileInput.addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file || !pendingImgTarget) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const target = pendingImgTarget.tagName === 'IMG' ? pendingImgTarget : pendingImgTarget.querySelector('img');
+    if(target) target.src = reader.result;
+    snapshotState();
+    showToast('Image updated');
+    pendingImgTarget = null;
+  };
+  reader.readAsDataURL(file);
+  imgFileInput.value = '';
+});
+videoFileInput.addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file || !pendingVideoTarget) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const vid = pendingVideoTarget;
+    const frame = vid.closest('.video-frame');
+    vid.src = reader.result;
+    vid.controls = true;
+    vid.muted = true;
+    vid.loop = true;
+    vid.load();
+    const playAttempt = vid.play();
+    if(playAttempt && playAttempt.catch) playAttempt.catch(()=>{});
+    if(frame){
+      const hint = frame.querySelector('.video-upload-hint');
+      const btn = frame.querySelector('.video-replace-btn');
+      if(hint) hint.style.display = 'none';
+      if(btn) btn.style.display = 'block';
+    }
+    snapshotState();
+    showToast('Video uploaded');
+    pendingVideoTarget = null;
+  };
+  reader.readAsDataURL(file);
+  videoFileInput.value = '';
+});
+
+/* ================= toolbar actions ================= */
+toolbar.querySelectorAll('.tb-swatch').forEach(sw=>{
+  sw.addEventListener('click', ()=>{ if(selectedEl){ selectedEl.style.color = sw.dataset.c; snapshotState(); } });
+});
+document.getElementById('tbCustomColor').addEventListener('input', e=>{ if(selectedEl) selectedEl.style.color = e.target.value; });
+document.getElementById('tbCustomColor').addEventListener('change', ()=> snapshotState());
+toolbar.querySelectorAll('.size-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    toolbar.querySelectorAll('.size-btn').forEach(b=> b.classList.remove('on'));
+    btn.classList.add('on');
+    if(selectedEl){
+      if(!selectedEl.dataset.baseSize) selectedEl.dataset.baseSize = parseFloat(getComputedStyle(selectedEl).fontSize);
+      selectedEl.style.fontSize = (parseFloat(selectedEl.dataset.baseSize) * parseFloat(btn.dataset.s)) + 'px';
+      snapshotState();
+    }
+  });
+});
+toolbar.querySelectorAll('.align-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    toolbar.querySelectorAll('.align-btn').forEach(b=> b.classList.remove('on'));
+    btn.classList.add('on');
+    if(selectedEl){ selectedEl.style.textAlign = btn.dataset.a; snapshotState(); }
+  });
+});
+toolbar.querySelectorAll('.style-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    btn.classList.toggle('on');
+    if(selectedEl){
+      if(btn.dataset.style==='bold') selectedEl.style.fontWeight = btn.classList.contains('on') ? '700' : '';
+      if(btn.dataset.style==='italic') selectedEl.style.fontStyle = btn.classList.contains('on') ? 'italic' : '';
+      snapshotState();
+    }
+  });
+});
+document.getElementById('fontSelect').addEventListener('change', e=>{
+  if(selectedEl){ selectedEl.style.fontFamily = e.target.value; snapshotState(); }
+});
+
+/* ================= viewport toggle ================= */
+vpToggle.querySelectorAll('button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    vpToggle.querySelectorAll('button').forEach(b=> b.classList.remove('on'));
+    btn.classList.add('on');
+    preview.style.width = btn.dataset.w + 'px';
+  });
+});
+
+/* ================= motion slider ================= */
+document.getElementById('speedSlider').addEventListener('input', e=>{
+  const v = parseFloat(e.target.value);
+  document.getElementById('speedLabel').textContent = v.toFixed(1)+'×';
+  const doc = preview.contentDocument;
+  if(doc) doc.documentElement.style.setProperty('--speed', v);
+});
+document.getElementById('speedSlider').addEventListener('change', ()=> snapshotState());
+
+/* ================= save / export ================= */
+function getSaved(){ try{ return JSON.parse(localStorage.getItem('buildly-saved-v3')||'[]'); }catch(e){ return []; } }
+function setSaved(list){ localStorage.setItem('buildly-saved-v3', JSON.stringify(list)); renderSaved(); }
+function renderSaved(){
+  const list = getSaved();
+  savedListEl.innerHTML = '';
+  savedEmpty.style.display = list.length ? 'none' : 'block';
+  list.slice().reverse().forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'saved-item';
+    row.innerHTML = `<span class="name">${item.name}</span><button class="load">Open</button><button class="remove">✕</button>`;
+    row.querySelector('.load').addEventListener('click', ()=>{
+      currentName = item.name;
+      restoreSnapshot(item.html);
+      history = [item.html]; historyIndex = 0; updateUndoRedoButtons();
+      statusText.textContent = item.name.toUpperCase().replace(/\s+/g,'_') + '.PAGE';
+    });
+    row.querySelector('.remove').addEventListener('click', ()=>{
+      setSaved(getSaved().filter(x=> x.id!==item.id));
+      showToast('Removed from saved');
+    });
+    savedListEl.appendChild(row);
+  });
+}
+function hasSections(){
+  const doc = preview.contentDocument;
+  return doc && doc.querySelector('body > [data-block]');
+}
+function sanitizeForExport(rawHtml){
+  const parser = new DOMParser();
+  const clean = parser.parseFromString(rawHtml, 'text/html');
+
+  clean.querySelectorAll('[contenteditable]').forEach(el=> el.removeAttribute('contenteditable'));
+  clean.querySelectorAll('.sel-active').forEach(el=> el.classList.remove('sel-active'));
+
+  clean.querySelectorAll('[data-img-editable]').forEach(el=>{
+    el.removeAttribute('data-img-editable');
+    el.style.cursor = '';
+  });
+
+  clean.querySelectorAll('.video-frame').forEach(frame=>{
+    const vid = frame.querySelector('.vid-el');
+    const hint = frame.querySelector('.video-upload-hint');
+    const btn = frame.querySelector('.video-replace-btn');
+    if(hint) hint.remove();
+    if(btn) btn.remove();
+    frame.removeAttribute('data-video-editable');
+    if(vid){
+      if(vid.getAttribute('src')){
+        vid.setAttribute('controls','');
+      } else {
+        const img = clean.createElement('img');
+        img.src = vid.getAttribute('poster') || '';
+        img.alt = 'Preview';
+        img.setAttribute('style', vid.getAttribute('style') || 'width:100%;display:block');
+        frame.replaceChild(img, vid);
+      }
+    }
+  });
+
+  clean.querySelectorAll('[data-block]').forEach(el=>{
+    el.removeAttribute('data-label');
+    el.removeAttribute('data-bg-step');
+  });
+  clean.querySelectorAll('[data-base-size]').forEach(el=> el.removeAttribute('data-base-size'));
+
+  return '<!DOCTYPE html>\n' + clean.documentElement.outerHTML;
+}
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  if(!hasSections()){ showToast('Add at least one section first'); return; }
+  openSaveModal();
+});
+document.getElementById('copyBtn').addEventListener('click', async ()=>{
+  if(!hasSections()){ showToast('Add at least one section first'); return; }
+  const doc = preview.contentDocument;
+  const html = sanitizeForExport(doc.documentElement.outerHTML);
+  try{
+    await navigator.clipboard.writeText(html);
+    showToast('HTML copied to clipboard');
+  }catch(e){
+    showToast("Couldn't access clipboard");
+  }
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  if(!hasSections()){ showToast('Add at least one section first'); return; }
+  const doc = preview.contentDocument;
+  const html = sanitizeForExport(doc.documentElement.outerHTML);
+  try{
+    const blob = new Blob([html], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (currentName || 'site').toLowerCase().replace(/\s+/g,'-') + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 4000);
+    showToast('Exported site');
+  }catch(err){
+    const w = window.open('', '_blank');
+    if(w){
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      showToast('Opened in a new tab — use Ctrl/Cmd+S to save it');
+    } else {
+      showToast('Download blocked here — try Copy HTML instead, or open this file outside the preview');
+    }
+  }
+});
+
+/* ================= modal ================= */
+function openSaveModal(){
+  modalInput.value = currentName || 'My Site';
+  modalOverlay.classList.add('show');
+  modalInput.focus();
+  modalInput.select();
+}
+function closeModal(){ modalOverlay.classList.remove('show'); }
+function confirmSave(){
+  const name = modalInput.value.trim();
+  if(!name) return;
+  const doc = preview.contentDocument;
+  if(!doc) return;
+  const list = getSaved();
+  list.push({ id: Date.now(), name, html: doc.documentElement.outerHTML });
+  setSaved(list);
+  currentName = name;
+  statusText.textContent = name.toUpperCase().replace(/\s+/g,'_') + '.PAGE';
+  closeModal();
+  showToast(`Saved "${name}"`);
+}
+document.getElementById('modalCancel').addEventListener('click', closeModal);
+document.getElementById('modalConfirm').addEventListener('click', confirmSave);
+modalInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter') confirmSave();
+  if(e.key==='Escape') closeModal();
+});
+modalOverlay.addEventListener('click', e=>{ if(e.target===modalOverlay) closeModal(); });
+
+/* ================= init ================= */
+renderThemes();
+renderLibrary();
+renderSaved();
+document.querySelector(`.theme-card[data-key="${currentThemeKey}"]`).classList.add('active');
+preview.srcdoc = shell(currentThemeKey);
+preview.onload = ()=>{
+  attachSelection();
+  buildLayers();
+  snapshotState();
+  updateUndoRedoButtons();
+};
+</script>
+</body>
+</html>
