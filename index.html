@@ -1,51 +1,30 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DIGITAL PRODUCTS</title>
+    <title>DIGITAL PRODUCTS | V3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;400&display=swap');
-        
-        body { 
-            margin: 0; 
-            background: #000; 
-            color: #fff; 
-            font-family: 'Inter', sans-serif; 
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-        canvas { position: fixed; z-index: 0; }
-        
-        .container { position: relative; z-index: 1; text-align: center; width: 90%; max-width: 600px; }
-        .brand { font-size: 2.5rem; font-weight: 200; letter-spacing: 0.2em; margin-bottom: 80px; text-transform: uppercase; }
-        
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card { 
-            padding: 30px; 
-            border: 1px solid #333; 
-            cursor: pointer; 
-            transition: 0.3s; 
-        }
-        .card:hover { border-color: #fff; background: #111; }
-        .card h2 { font-size: 0.9rem; font-weight: 400; margin: 0; letter-spacing: 0.1em; }
+        body { background: #020202; color: #fff; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glow:hover { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); border-color: #3b82f6; }
     </style>
 </head>
-<body>
-    <canvas id="c"></canvas>
-    <div class="container">
-        <div class="brand">DIGITAL PRODUCTS</div>
-        <div class="grid">
-            <div class="card" onclick="verifyAccess('./catalog1/')">
-                <h2>CATALOG 01</h2>
+<body class="min-h-screen flex flex-col items-center justify-center p-6">
+    <canvas id="c" class="fixed inset-0 z-0 opacity-20"></canvas>
+    
+    <div class="relative z-10 w-full max-w-4xl text-center">
+        <h1 class="text-4xl font-light tracking-[0.3em] mb-16 uppercase">Digital Products</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div onclick="verifyAccess('./catalog1/')" class="glass p-10 cursor-pointer transition-all duration-500 glow">
+                <h2 class="text-sm tracking-widest uppercase mb-2">Catalog 01</h2>
+                <div class="w-12 h-px bg-blue-500 mx-auto"></div>
             </div>
-            <div class="card" onclick="verifyAccess('./catalog2/')">
-                <h2>CATALOG 02</h2>
+            <div onclick="verifyAccess('./catalog2/')" class="glass p-10 cursor-pointer transition-all duration-500 glow">
+                <h2 class="text-sm tracking-widest uppercase mb-2">Catalog 02</h2>
+                <div class="w-12 h-px bg-blue-500 mx-auto"></div>
             </div>
         </div>
     </div>
@@ -53,23 +32,26 @@
     <script>
         const c = document.getElementById('c'), ctx = c.getContext('2d');
         c.width = window.innerWidth; c.height = window.innerHeight;
-        
+
         function verifyAccess(path) {
-            // This confirm() dialog will trigger normally when hosted on GitHub Pages
-            if (confirm("Support the project by liking this repository to unlock access.")) {
+            // The popup gate
+            if (confirm("Support the repository by liking it to proceed to the secure catalog.")) {
                 window.location.href = path;
             }
         }
 
+        // Animated particles for premium feel
         function draw() {
-            ctx.fillStyle = '#000'; ctx.fillRect(0,0,c.width,c.height);
-            ctx.strokeStyle = '#111';
-            for(let i=0; i<c.width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,c.height); ctx.stroke(); }
+            ctx.fillStyle = '#020202'; ctx.fillRect(0,0,c.width,c.height);
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            for(let i=0; i<10; i++) {
+                ctx.beginPath();
+                ctx.arc(Math.random()*c.width, Math.random()*c.height, 1, 0, Math.PI*2);
+                ctx.fill();
+            }
             requestAnimationFrame(draw);
         }
         draw();
     </script>
 </body>
 </html>
-
-```
