@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Forge — code + preview + AI</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#1e1e1e;
+    --bg-1:#252526;
+    --bg-2:#2d2d30;
+    --bg-3:#3c3c40;
+    --line:#3c3c3c;
+    --line-soft:#333333;
+    --text-0:#d4d4d4;
+    --text-1:#a0a0a0;
+    --text-2:#6b6b6b;
+    --blue:#007acc;
+    --blue-dim:#0e2a3d;
+    --green:#3fb950;
+    --green-dim:#0f2a1c;
+    --violet:#9d7cf5;
+    --violet-dim:#241f3a;
+    --red:#f2685a;
+    --red-dim:#3a1a16;
+    --warn:#cca700;
+    --warn-dim:#3a3115;
+    --radius:6px;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+    --sans:'Segoe UI', 'Inter', system-ui, sans-serif;
+    --ease:cubic-bezier(.22,1,.36,1);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:var(--bg-0);color:var(--text-0);font-family:var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased;}
+  button{font-family:inherit;}
+  ::selection{background:#3a3564;}
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--bg-3);border-radius:5px;}
+  ::-webkit-scrollbar-thumb:hover{background:#2c3346;}
+  :focus-visible{outline:2px solid var(--violet);outline-offset:1px;border-radius:4px;}
+
+  .app{display:flex;flex-direction:column;height:100vh;border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5);}
+
+  /* ---- window chrome / top bar ---- */
+  .chrome{display:flex;align-items:center;gap:10px;padding:0 12px;height:38px;background:var(--bg-0);border-bottom:1px solid var(--line-soft);flex-shrink:0;-webkit-app-region:drag;}
+  .traffic{display:flex;gap:7px;}
+  .traffic span{width:11px;height:11px;border-radius:50%;display:block;}
+  .traffic .r{background:#f25f57;}
+  .traffic .y{background:#f2b74b;}
+  .traffic .g{background:#4fca5e;}
+  .chrome-title{font-size:12px;color:var(--text-2);font-family:var(--mono);margin:0 auto;}
+
+  .topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 14px;min-height:48px;background:var(--bg-1);border-bottom:1px solid var(--line);flex-shrink:0;row-gap:8px;}
+  .topbar-row1{display:flex;align-items:center;gap:8px;flex:1 1 220px;min-width:0;}
+  .topbar-row2{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:auto;}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;letter-spacing:0.2px;color:var(--text-0);flex-shrink:0;}
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px var(--blue-dim);}
+  .tabs{display:flex;gap:2px;margin-left:6px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;touch-action:pan-x;-webkit-overflow-scrolling:touch;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{position:relative;padding:7px 12px 7px 14px;font-size:12.5px;font-family:var(--mono);color:var(--text-1);background:transparent;border:1px solid transparent;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;transition:background .12s var(--ease),color .12s var(--ease);}
+  .tab:hover{color:var(--text-0);background:var(--bg-2);}
+  .tab.active{color:var(--text-0);background:var(--bg-2);border-color:var(--line);}
+  .tab .ext{color:var(--text-2);}
+  .tab .unsaved{width:6px;height:6px;border-radius:50%;background:var(--warn);flex-shrink:0;opacity:0;transition:opacity .15s var(--ease);}
+  .tab .unsaved.show{opacity:1;}
+  .spacer{flex:1;}
+  .btn{display:flex;align-items:center;gap:6px;padding:7px 13px;font-size:13px;font-weight:500;border-radius:7px;border:1px solid var(--line);background:var(--bg-2);color:var(--text-0);cursor:pointer;transition:filter .12s var(--ease),transform .08s var(--ease),border-color .12s var(--ease);}
+  .btn:hover{border-color:#3a4256;}
+  .btn:active{transform:scale(.96);}
+  .btn.run{background:var(--green);color:#07240f;border-color:var(--green);position:relative;}
+  .btn.run:hover{filter:brightness(1.08);}
+  .btn.run .pulse{width:6px;height:6px;border-radius:50%;background:#07240f;opacity:.35;}
+  .btn.run.pending .pulse{animation:pulse 1s infinite ease-in-out;}
+  @keyframes pulse{0%,100%{opacity:.25;transform:scale(.8);}50%{opacity:.9;transform:scale(1.15);}}
+  .btn.ai{background:var(--violet-dim);color:var(--violet);border-color:#352f5c;}
+  .btn.ai:hover{background:#2a2650;}
+  .btn.ai.on{background:var(--violet);color:#fff;}
+  .btn.ghost{background:transparent;}
+  .btn.ghost:hover{background:var(--bg-2);}
+  .icon{width:14px;height:14px;flex-shrink:0;}
+  .kbd{font-family:var(--mono);font-size:10.5px;color:var(--text-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-left:2px;}
+
+  /* ---- main split ---- */
+  .main{flex:1;display:flex;min-height:0;position:relative;}
+  .pane{display:flex;flex-direction:column;min-width:0;}
+  .editor-pane{width:52%;border-right:1px solid var(--line);}
+  .preview-pane{flex:1;background:#fff;}
+  .resizer{width:5px;cursor:col-resize;background:var(--bg-0);flex-shrink:0;position:relative;}
+  .resizer::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:28px;border-radius:2px;background:var(--line);transition:background .12s var(--ease);}
+  .resizer:hover::after, .resizer.active::after{background:var(--violet);}
+
+  .pane-header{height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:0.6px;border-bottom:1px solid var(--line-soft);background:var(--bg-1);}
+  .pane-header .right{display:flex;gap:2px;}
+  .pane-header button{background:none;border:none;color:var(--text-1);cursor:pointer;padding:5px;border-radius:5px;display:flex;transition:background .12s var(--ease),color .12s var(--ease);}
+  .pane-header button:hover{background:var(--bg-2);color:var(--text-0);}
+  .pane-header button:active{transform:scale(.92);}
+  .preview-pane .pane-header{background:var(--bg-1);}
+
+  #editorHost{flex:1;min-height:0;}
+  .fallback-editor{width:100%;height:100%;border:none;outline:none;resize:none;background:var(--bg-1);color:var(--text-0);font-family:var(--mono);font-size:13.5px;line-height:1.6;padding:10px 14px;}
+  .CodeMirror{height:100%;background:var(--bg-1)!important;color:var(--text-0)!important;font-family:var(--mono)!important;font-size:13.5px!important;line-height:1.6;padding:4px 0;}
+  .CodeMirror-gutters{background:var(--bg-1)!important;border-right:1px solid var(--line-soft)!important;}
+  .CodeMirror-linenumber{color:var(--text-2)!important;}
+  .CodeMirror-cursor{border-left:2px solid var(--blue)!important;}
+  .cm-s-default .cm-tag{color:#6fb8f0!important;}
+  .cm-s-default .cm-attribute{color:#7fd4a8!important;}
+  .cm-s-default .cm-string{color:#e0b475!important;}
+  .cm-s-default .cm-comment{color:var(--text-2)!important;font-style:italic;}
+  .cm-s-default .cm-keyword{color:var(--violet)!important;}
+  .cm-s-default .cm-property{color:#6fb8f0!important;}
+  .cm-s-default .cm-number{color:#e0956f!important;}
+  .cm-s-default .cm-variable, .cm-s-default .cm-def{color:var(--text-0)!important;}
+  .CodeMirror-selected{background:#2a3145!important;}
+  .CodeMirror-activeline-background{background:#171b26!important;}
+  .CodeMirror-matchingbracket{color:var(--green)!important;text-decoration:underline;}
+
+  .preview-shell{position:relative;flex:1;background:var(--bg-1);}
+  iframe#preview{width:100%;height:100%;border:none;background:#fff;}
+  .preview-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg-1);opacity:0;pointer-events:none;transition:opacity .18s var(--ease);}
+  .preview-overlay.show{opacity:1;pointer-events:all;}
+  .spinner{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--violet);animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ---- AI drawer ---- */
+  .ai-drawer{position:fixed;right:16px;bottom:16px;width:380px;height:0;background:var(--bg-1);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.5);z-index:50;display:flex;flex-direction:column;opacity:0;transform:translateY(14px) scale(.98);transform-origin:bottom right;pointer-events:none;transition:opacity .2s var(--ease),transform .2s var(--ease);overflow:hidden;}
+  .ai-drawer.open{height:var(--drawer-h,500px);opacity:1;transform:translateY(0) scale(1);pointer-events:all;}
+  .ai-resize{height:6px;cursor:row-resize;flex-shrink:0;margin-top:-6px;position:relative;z-index:2;}
+  .ai-head{display:flex;align-items:center;gap:9px;padding:12px 10px 12px 14px;border-bottom:1px solid var(--line-soft);flex-shrink:0;}
+  .ai-head .title{font-weight:600;font-size:13.5px;color:var(--text-0);}
+  .ai-head .sub{font-size:11px;color:var(--text-2);}
+  .ai-head .spacer{flex:1;}
+  .ai-close{background:none;border:none;color:var(--text-2);cursor:pointer;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:background .12s var(--ease),color .12s var(--ease);}
+  .ai-close:hover{background:var(--bg-2);color:var(--text-0);}
+  .ai-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;}
+  .msg{font-size:13px;line-height:1.55;animation:rise .18s var(--ease);}
+  @keyframes rise{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .msg.user{color:var(--text-0);background:var(--bg-2);padding:8px 11px;border-radius:9px 9px 3px 9px;align-self:flex-end;max-width:88%;}
+  .msg.ai{color:var(--text-1);}
+  .msg.ai .txt{color:var(--text-0);white-space:pre-wrap;}
+  .msg.ai.error .txt{color:var(--red);}
+  .retry-btn{margin-top:6px;font-size:11.5px;background:var(--red-dim);color:var(--red);border:1px solid #4a231e;padding:4px 10px;border-radius:6px;cursor:pointer;}
+  .retry-btn:hover{filter:brightness(1.15);}
+  .code-card{margin-top:6px;background:var(--bg-2);border:1px solid var(--line);border-radius:7px;overflow:hidden;}
+  .code-card .cc-head{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-family:var(--mono);font-size:11px;color:var(--text-2);border-bottom:1px solid var(--line-soft);}
+  .code-card pre{margin:0;padding:10px;font-family:var(--mono);font-size:11.5px;color:var(--text-0);white-space:pre-wrap;max-height:180px;overflow-y:auto;}
+  .cc-insert{background:var(--violet);color:#fff;border:none;font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer;font-family:var(--sans);transition:filter .12s var(--ease),transform .08s var(--ease);}
+  .cc-insert:hover{filter:brightness(1.1);}
+  .cc-insert:active{transform:scale(.94);}
+  .cc-insert.done{background:var(--green);color:#08321a;}
+  .ai-input-row{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line-soft);flex-shrink:0;}
+  .ai-input-row input{flex:1;background:var(--bg-2);border:1px solid var(--line);color:var(--text-0);font-family:var(--sans);font-size:13px;padding:8px 10px;border-radius:7px;outline:none;transition:border-color .12s var(--ease);}
+  .ai-input-row input:focus{border-color:var(--violet);}
+  .ai-input-row input:disabled{opacity:.6;}
+  .ai-input-row button{background:var(--violet);border:none;color:#fff;width:34px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:filter .12s var(--ease),transform .08s var(--ease);}
+  .ai-input-row button:hover:not(:disabled){filter:brightness(1.1);}
+  .ai-input-row button:active:not(:disabled){transform:scale(.9);}
+  .ai-input-row button:disabled{opacity:0.45;cursor:default;}
+  .typing{display:flex;gap:3px;padding:2px 0;}
+  .typing span{width:5px;height:5px;border-radius:50%;background:var(--text-2);animation:blink 1.2s infinite ease-in-out;}
+  .typing span:nth-child(2){animation-delay:.2s;}
+  .typing span:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,80%,100%{opacity:.3;}40%{opacity:1;}}
+
+  /* ---- status bar ---- */
+  .statusbar{height:22px;flex-shrink:0;background:var(--blue);color:#fff;font-family:var(--sans);font-size:11.5px;display:flex;align-items:center;padding:0 12px;gap:16px;font-weight:500;}
+  .statusbar .dot-ind{width:6px;height:6px;border-radius:50%;background:#fff;opacity:.5;}
+  .statusbar .dot-ind.pending{animation:pulse 1s infinite ease-in-out;}
+
+  /* ---- menu bar (File / Extensions) ---- */
+  .menubar{display:flex;align-items:center;gap:2px;padding:0 10px;height:28px;background:var(--bg-1);border-bottom:1px solid var(--line-soft);flex-shrink:0;font-size:12.5px;position:relative;z-index:40;}
+  .menu{position:relative;}
+  .menu>.menu-label{padding:4px 10px;border-radius:4px;cursor:pointer;color:var(--text-1);}
+  .menu>.menu-label:hover, .menu.open>.menu-label{background:var(--bg-3);color:var(--text-0);}
+  .menu-dropdown{position:absolute;top:100%;left:0;margin-top:2px;min-width:190px;background:var(--bg-2);border:1px solid var(--line);border-radius:7px;box-shadow:0 12px 30px rgba(0,0,0,.4);padding:5px;display:none;flex-direction:column;gap:1px;}
+  .menu.open .menu-dropdown{display:flex;}
+  .menu-dropdown button{display:flex;align-items:center;gap:9px;text-align:left;background:none;border:none;color:var(--text-0);font-size:12.5px;font-family:var(--sans);padding:7px 9px;border-radius:5px;cursor:pointer;}
+  .menu-dropdown button:hover{background:var(--blue-dim);color:#fff;}
+  .menu-dropdown .menu-sep{height:1px;background:var(--line-soft);margin:4px 2px;}
+
+  /* ---- extensions panel (reuses modal) ---- */
+  .ext-card{display:flex;gap:11px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);align-items:flex-start;}
+  .ext-icon{width:34px;height:34px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--blue-dim);color:var(--blue);}
+  .ext-icon.violet{background:var(--violet-dim);color:var(--violet);}
+  .ext-info{flex:1;min-width:0;}
+  .ext-info .name{font-weight:600;font-size:13px;color:var(--text-0);}
+  .ext-info .desc{font-size:11.5px;color:var(--text-1);margin-top:2px;line-height:1.5;}
+  .ext-badge{font-size:10.5px;color:var(--green);background:var(--green-dim);padding:2px 7px;border-radius:20px;flex-shrink:0;white-space:nowrap;}
+  .switch{position:relative;width:34px;height:19px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch .track{position:absolute;inset:0;background:var(--bg-3);border:1px solid var(--line);border-radius:20px;cursor:pointer;transition:background .15s var(--ease);}
+  .switch .track::before{content:'';position:absolute;width:13px;height:13px;left:2px;top:2px;background:var(--text-1);border-radius:50%;transition:transform .15s var(--ease),background .15s var(--ease);}
+  .switch input:checked + .track{background:var(--blue-dim);border-color:var(--blue);}
+  .switch input:checked + .track::before{transform:translateX(15px);background:var(--blue);}
+
+  /* ---- settings modal ---- */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(6,8,13,.6);display:none;align-items:center;justify-content:center;z-index:70;padding:20px;}
+  .modal-backdrop.show{display:flex;}
+  .modal{width:100%;max-width:420px;max-height:calc(100vh - 40px);overflow-y:auto;background:var(--bg-1);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line-soft);}
+  .modal-head .title{font-weight:600;font-size:14px;}
+  .modal-body{padding:14px 16px 18px;display:flex;flex-direction:column;gap:10px;}
+  .modal-body p{margin:0;font-size:12.5px;line-height:1.6;color:var(--text-1);}
+  .modal-body label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-2);margin-top:4px;}
+  .modal-body input{background:var(--bg-2);border:1px solid var(--line);color:var(--text-0);font-family:var(--mono);font-size:12.5px;padding:9px 10px;border-radius:7px;outline:none;}
+  .modal-body input:focus{border-color:var(--violet);}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;}
+
+  /* ---- offline banner ---- */
+  .offline-banner{display:none;align-items:center;gap:8px;padding:8px 14px;font-size:12.5px;background:var(--warn-dim);color:var(--warn);border-bottom:1px solid #4a3f16;flex-shrink:0;}
+  .offline-banner.show{display:flex;}
+  .offline-banner .icon{width:14px;height:14px;flex-shrink:0;}
+  .mobile-switch{display:none;gap:4px;padding:6px 10px;background:var(--bg-1);border-bottom:1px solid var(--line);flex-shrink:0;}
+  .ms-btn{flex:1;padding:7px 0;font-size:12.5px;font-weight:500;font-family:var(--sans);color:var(--text-1);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;cursor:pointer;}
+  .ms-btn.active{color:var(--text-0);background:var(--violet-dim);border-color:#352f5c;}
+
+  /* ---- universal AI drawer safety clamp (any screen) ---- */
+  .ai-drawer{max-height:calc(100vh - 24px);width:min(380px, calc(100vw - 24px));}
+  .ai-resize{touch-action:none;}
+  .resizer{touch-action:none;}
+
+  /* ---- responsive: tablets & phones ---- */
+  @media (max-width: 760px){
+    .kbd{display:none;}
+    .btn .btn-label{display:none;}
+    .btn{padding:8px;}
+    .btn.run{padding:8px 10px;}
+    .mobile-switch{display:flex;}
+    .main{flex-direction:column;}
+    .resizer{display:none;}
+    .editor-pane, .preview-pane{width:100%!important;flex:1;border-right:none;}
+    .editor-pane{border-bottom:1px solid var(--line);}
+    .main.view-code .preview-pane{display:none;}
+    .main.view-preview .editor-pane{display:none;}
+    .ai-drawer{left:12px;right:12px;bottom:12px;width:auto;}
+    .chrome-title{display:none;}
+  }
+  @media (max-width: 420px){
+    .brand-text{display:none;}
+  }
+
+  /* ---- toasts ---- */
+  .toasts{position:fixed;left:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:60;}
+  .toast{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--line);color:var(--text-0);font-size:12.5px;padding:9px 13px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);animation:toastin .2s var(--ease);}
+  .toast.ok{border-color:#1e4a30;}
+  .toast .ic{width:14px;height:14px;flex-shrink:0;color:var(--green);}
+  @keyframes toastin{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .toast.leaving{animation:toastout .18s var(--ease) forwards;}
+  @keyframes toastout{to{opacity:0;transform:translateY(6px);}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="chrome">
+    <div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+    <div class="chrome-title">forge — untitled project</div>
+  </div>
+
+  <div class="menubar">
+    <div class="menu" id="fileMenu">
+      <div class="menu-label">File</div>
+      <div class="menu-dropdown">
+        <button id="newProjectBtn">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          New project
+        </button>
+        <button id="importMenuBtn">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+          Import files…
+        </button>
+        <button id="exportMenuBtn">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
+          Export project
+        </button>
+      </div>
+    </div>
+    <div class="menu" id="extMenu">
+      <div class="menu-label" id="extMenuLabel">Extensions</div>
+    </div>
+    <input type="file" id="importInput" accept=".html,.htm,.css,.js" multiple style="display:none">
+  </div>
+
+  <div class="topbar">
+    <div class="topbar-row1">
+      <div class="brand"><span class="dot"></span><span class="brand-text">Forge</span></div>
+      <div class="tabs" id="tabs"></div>
+    </div>
+    <div class="topbar-row2">
+      <button class="btn ghost" id="exportBtn" title="Download project as a single HTML file">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
+        <span class="btn-label">Export</span>
+      </button>
+      <button class="btn ghost" id="settingsBtn" title="Configure AI endpoint">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+      <button class="btn ai" id="aiToggle">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6L12 2z"/></svg>
+        <span class="btn-label">Ask AI</span>
+      </button>
+      <button class="btn run" id="runBtn">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <span class="btn-label">Run</span><span class="kbd">⌘⏎</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="offline-banner" id="offlineBanner">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0119 12.55M5 12.55a10.94 10.94 0 015.17-2.39M10.71 5.05A16 16 0 0122.58 9M1.42 9a15.91 15.91 0 014.7-2.88M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>
+    <span>You're offline — editing, preview and export still work. AI assist needs an internet connection.</span>
+  </div>
+
+  <div class="mobile-switch" id="mobileSwitch">
+    <button class="ms-btn active" data-view="code">Code</button>
+    <button class="ms-btn" data-view="preview">Preview</button>
+  </div>
+
+  <div class="main" id="main">
+    <div class="pane editor-pane" id="editorPane">
+      <div class="pane-header"><span id="paneLabel">index.html</span></div>
+      <div id="editorHost"></div>
+    </div>
+    <div class="resizer" id="resizer"></div>
+    <div class="pane preview-pane" id="previewPane">
+      <div class="pane-header">
+        <span>Preview</span>
+        <div class="right">
+          <button id="refreshBtn" title="Refresh preview">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.13-3.36L23 10M1 14l5.36 4.36A9 9 0 0020.49 15"/></svg>
+          </button>
+          <button id="openTabBtn" title="Open preview in new tab">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="preview-shell">
+        <iframe id="preview" sandbox="allow-scripts allow-modals allow-forms allow-popups"></iframe>
+        <div class="preview-overlay" id="previewOverlay"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar" id="statusbar">
+    <span id="statusMode">HTML</span>
+    <span id="statusPos">Ln 1, Col 1</span>
+    <span class="spacer" style="flex:1"></span>
+    <span class="dot-ind" id="statusDot"></span>
+    <span id="statusState">Live preview on</span>
+  </div>
+</div>
+
+
+<div class="ai-drawer" id="aiDrawer">
+  <div class="ai-resize" id="aiResize"></div>
+  <div class="ai-head">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6L12 2z"/></svg>
+    <div><div class="title">AI assist</div><div class="sub">Sees your HTML, CSS and JS</div></div>
+    <div class="spacer"></div>
+    <button class="ai-close" id="aiClose" aria-label="Close AI panel">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="ai-body" id="aiBody">
+    <div class="msg ai"><span class="txt">Ask me to write or change your code — I can see all three files and insert results directly into the editor.</span></div>
+  </div>
+  <div class="ai-input-row">
+    <input id="aiInput" type="text" placeholder="e.g. add a dark-mode toggle button" />
+    <button id="aiSend" aria-label="Send">
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<div class="modal-backdrop" id="extBackdrop">
+  <div class="modal" id="extModal" style="max-width:460px;">
+    <div class="modal-head">
+      <div class="title">Extensions</div>
+      <button class="ai-close" id="extClose" aria-label="Close extensions">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom:2px;">A real VS Code extension marketplace needs a full extension host, which can't run inside a single static HTML page — so these are Forge's own built-in features, presented the same way. Toggle what you need.</p>
+
+      <div class="ext-card">
+        <div class="ext-icon violet">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6L12 2z"/></svg>
+        </div>
+        <div class="ext-info">
+          <div class="name">Claude AI Assist</div>
+          <div class="desc">Chat with Claude about your code from the "Ask AI" panel. Works automatically in Claude.ai; paste your own Anthropic API key once hosted elsewhere.</div>
+        </div>
+        <button class="btn ghost" id="extConfigureAi" style="font-size:11.5px;padding:6px 10px;">Configure</button>
+      </div>
+
+      <div class="ext-card">
+        <div class="ext-icon">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.13-3.36L23 10M1 14l5.36 4.36A9 9 0 0020.49 15"/></svg>
+        </div>
+        <div class="ext-info">
+          <div class="name">Auto Run Preview</div>
+          <div class="desc">Re-render the preview automatically ~0.6s after you stop typing. Turn off to only update on Run (⌘⏎).</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="extAutoRun" checked><span class="track"></span></label>
+      </div>
+
+      <div class="ext-card">
+        <div class="ext-icon">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        </div>
+        <div class="ext-info">
+          <div class="name">Word Wrap</div>
+          <div class="desc">Wrap long lines in the editor instead of scrolling horizontally.</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="extWordWrap"><span class="track"></span></label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="settingsBackdrop">
+  <div class="modal" id="settingsModal">
+    <div class="modal-head">
+      <div class="title">AI connection</div>
+      <button class="ai-close" id="settingsClose" aria-label="Close settings">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>Inside Claude.ai, "Ask AI" works automatically. Once this file is hosted elsewhere (like GitHub Pages), paste your own Anthropic API key below and it'll call Claude directly from your browser — no separate server needed.</p>
+      <p>Get a key at <strong>console.anthropic.com/settings/keys</strong>. It's stored only in this browser (never in the page's source or your repo) and is sent straight to Anthropic when you use Ask AI — nowhere else. Don't paste it on a page or device you don't trust.</p>
+      <label for="apiKeyInput">Anthropic API key</label>
+      <div style="display:flex;gap:6px;">
+        <input id="apiKeyInput" type="password" placeholder="sk-ant-…" style="flex:1;" autocomplete="off" />
+        <button class="btn ghost" id="apiKeyToggle" type="button" style="padding:0 10px;" title="Show/hide key">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="apiKeyClearBtn">Clear</button>
+        <button class="btn run" id="apiKeySaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closetag.min.js"></script>
+<script>
+const BLANK_FILES = {
+  html: { label: 'index.html', mode: 'htmlmixed', content: '' },
+  css: { label: 'style.css', mode: 'css', content: '' },
+  js: { label: 'script.js', mode: 'javascript', content: '' }
+};
+const files = {
+  html: { ...BLANK_FILES.html, saved: true },
+  css: { ...BLANK_FILES.css, saved: true },
+  js: { ...BLANK_FILES.js, saved: true }
+};
+
+let activeFile = 'html';
+let lastRunContent = { html: files.html.content, css: files.css.content, js: files.js.content };
+
+// CodeMirror loads from a CDN, so it (and only it) is unavailable offline.
+// If that's the case, fall back to a plain textarea that exposes the same
+// small subset of the CodeMirror API the rest of this app uses, so editing,
+// live preview, tabs, and export keep working with zero internet — only
+// syntax highlighting and bracket-matching are lost.
+const usingFallbackEditor = typeof CodeMirror === 'undefined';
+
+function createFallbackEditor(host, initialValue){
+  const ta = document.createElement('textarea');
+  ta.value = initialValue;
+  ta.spellcheck = false;
+  ta.autocapitalize = 'off';
+  ta.autocomplete = 'off';
+  ta.className = 'fallback-editor';
+  host.appendChild(ta);
+  const listeners = { change: [], cursorActivity: [] };
+  const fire = (evt) => listeners[evt].forEach(fn => fn());
+  ta.addEventListener('input', () => fire('change'));
+  ta.addEventListener('keyup', () => fire('cursorActivity'));
+  ta.addEventListener('click', () => fire('cursorActivity'));
+  ta.addEventListener('keydown', (e) => {
+    if((e.metaKey || e.ctrlKey) && e.key === 'Enter'){ e.preventDefault(); runPreview(); return; }
+    if(e.key === 'Tab'){
+      e.preventDefault();
+      const s = ta.selectionStart, en = ta.selectionEnd;
+      ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(en);
+      ta.selectionStart = ta.selectionEnd = s + 2;
+      fire('change');
+    }
+  });
+  return {
+    getValue: () => ta.value,
+    setValue: (v) => { ta.value = v; },
+    setOption: () => {},
+    getCursor: () => {
+      const pos = ta.selectionStart;
+      const lines = ta.value.slice(0, pos).split('\n');
+      return { line: lines.length - 1, ch: lines[lines.length - 1].length };
+    },
+    on: (evt, cb) => { if(listeners[evt]) listeners[evt].push(cb); },
+    refresh: () => {},
+    focus: () => ta.focus()
+  };
+}
+
+const editor = usingFallbackEditor
+  ? createFallbackEditor(document.getElementById('editorHost'), files.html.content)
+  : CodeMirror(document.getElementById('editorHost'), {
+      value: files.html.content,
+      mode: 'htmlmixed',
+      lineNumbers: true,
+      styleActiveLine: true,
+      tabSize: 2,
+      indentUnit: 2,
+      viewportMargin: Infinity,
+      matchBrackets: true,
+      autoCloseBrackets: true,
+      autoCloseTags: true,
+      extraKeys: {
+        'Ctrl-Space': 'autocomplete',
+        'Cmd-Enter': runPreview,
+        'Ctrl-Enter': runPreview
+      }
+    });
+
+const extLabel = {html:'HTML', css:'CSS', js:'JS'};
+
+function fileChanged(key){
+  return files[key].content !== lastRunContent[key];
+}
+
+function renderTabs(){
+  const wrap = document.getElementById('tabs');
+  wrap.innerHTML = '';
+  Object.keys(files).forEach(key => {
+    const t = document.createElement('div');
+    t.className = 'tab' + (key === activeFile ? ' active' : '');
+    t.setAttribute('role','tab');
+    t.setAttribute('tabindex','0');
+    t.innerHTML = files[key].label.replace(/(\.\w+)$/, '<span class="ext">$1</span>')
+      + `<span class="unsaved${fileChanged(key) ? ' show' : ''}"></span>`;
+    t.onclick = () => switchTab(key);
+    t.onkeydown = (e) => { if(e.key === 'Enter' || e.key === ' ') switchTab(key); };
+    wrap.appendChild(t);
+  });
+}
+
+function switchTab(key){
+  if(key === activeFile) return;
+  files[activeFile].content = editor.getValue();
+  activeFile = key;
+  editor.setValue(files[key].content);
+  editor.setOption('mode', files[key].mode);
+  document.getElementById('paneLabel').textContent = files[key].label;
+  document.getElementById('statusMode').textContent = extLabel[key];
+  renderTabs();
+  editor.focus();
+}
+
+editor.on('cursorActivity', () => {
+  const c = editor.getCursor();
+  document.getElementById('statusPos').textContent = `Ln ${c.line+1}, Col ${c.ch+1}`;
+});
+
+let runTimer = null;
+const runBtn = document.getElementById('runBtn');
+const statusbar = document.getElementById('statusbar');
+const statusState = document.getElementById('statusState');
+const statusDot = document.getElementById('statusDot');
+let autoRunEnabled = true; // toggled from the Extensions panel
+
+editor.on('change', () => {
+  files[activeFile].content = editor.getValue();
+  renderTabs();
+  markPending();
+  if(autoRunEnabled){
+    clearTimeout(runTimer);
+    runTimer = setTimeout(runPreview, 600);
+  }
+});
+
+function markPending(){
+  runBtn.classList.add('pending');
+  statusDot.classList.add('pending');
+  statusState.textContent = autoRunEnabled ? 'Editing…' : 'Editing… (auto-run off)';
+}
+
+function runPreview(){
+  files[activeFile].content = editor.getValue();
+  const overlay = document.getElementById('previewOverlay');
+  overlay.classList.add('show');
+  clearTimeout(runTimer);
+  requestAnimationFrame(() => {
+    const doc = `<!DOCTYPE html><html><head><style>${files.css.content}</style></head><body>${files.html.content.replace(/<\/?(html|head|body|!DOCTYPE)[^>]*>/gi,'')}<script>${files.js.content}<\/script></body></html>`;
+    document.getElementById('preview').srcdoc = doc;
+    lastRunContent = { html: files.html.content, css: files.css.content, js: files.js.content };
+    renderTabs();
+    runBtn.classList.remove('pending');
+    statusDot.classList.remove('pending');
+    statusState.textContent = 'Preview up to date';
+    setTimeout(() => overlay.classList.remove('show'), 180);
+  });
+}
+
+runBtn.onclick = runPreview;
+document.getElementById('refreshBtn').onclick = runPreview;
+
+function buildFullDoc(title){
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>${files.css.content}</style></head><body>${files.html.content.replace(/<\/?(html|head|body|!DOCTYPE)[^>]*>/gi,'')}<script>${files.js.content}<\/script></body></html>`;
+}
+
+// Downloads and pop-ups can be blocked inside a sandboxed preview (e.g. an
+// embedded artifact viewer). This tries a real download first, then a new
+// tab, then finally falls back to copying the file to the clipboard so the
+// user always ends up with the code no matter where this page is running.
+async function exportOrOpen(mode){
+  files[activeFile].content = editor.getValue();
+  const doc = buildFullDoc(mode === 'export' ? 'Exported project' : 'Preview');
+  const blob = new Blob([doc], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+
+  if(mode === 'export'){
+    try{
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'project.html';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 8000);
+      showToast('Downloaded as project.html');
+      return;
+    }catch(err){ /* fall through */ }
+  }
+
+  try{
+    const win = window.open(url, '_blank');
+    if(win){
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      showToast(mode === 'export' ? 'Download blocked here — opened in a new tab instead' : 'Opened preview in a new tab');
+      return;
+    }
+  }catch(err){ /* fall through */ }
+
+  try{
+    await navigator.clipboard.writeText(doc);
+    showToast('Downloads are blocked in this preview — copied the full HTML to your clipboard instead');
+  }catch(err){
+    showToast('Could not export automatically here. Try opening this page directly in your browser.');
+  }
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('openTabBtn').onclick = () => exportOrOpen('preview');
+document.getElementById('exportBtn').onclick = () => exportOrOpen('export');
+
+renderTabs();
+runPreview();
+
+/* ---- menu bar: File dropdown ---- */
+const fileMenu = document.getElementById('fileMenu');
+document.querySelector('#fileMenu > .menu-label').addEventListener('click', (e) => {
+  e.stopPropagation();
+  fileMenu.classList.toggle('open');
+});
+document.addEventListener('click', () => fileMenu.classList.remove('open'));
+
+document.getElementById('newProjectBtn').onclick = () => {
+  fileMenu.classList.remove('open');
+  const hasContent = files.html.content || files.css.content || files.js.content;
+  if(hasContent && !confirm('Start a new project? This clears the current HTML, CSS and JS.')) return;
+  files.html.content = ''; files.css.content = ''; files.js.content = '';
+  activeFile = 'html';
+  editor.setValue('');
+  editor.setOption('mode', 'htmlmixed');
+  document.getElementById('paneLabel').textContent = files.html.label;
+  document.getElementById('statusMode').textContent = 'HTML';
+  renderTabs();
+  runPreview();
+  showToast('Started a new blank project');
+};
+
+document.getElementById('exportMenuBtn').onclick = () => {
+  fileMenu.classList.remove('open');
+  exportOrOpen('export');
+};
+
+/* ---- Import ---- */
+const importInput = document.getElementById('importInput');
+document.getElementById('importMenuBtn').onclick = () => {
+  fileMenu.classList.remove('open');
+  importInput.click();
+};
+importInput.addEventListener('change', async () => {
+  const picked = Array.from(importInput.files || []);
+  importInput.value = '';
+  if(picked.length === 0) return;
+
+  const results = { html: null, css: null, js: null };
+  for(const f of picked){
+    const text = await f.text();
+    const ext = f.name.split('.').pop().toLowerCase();
+    if(ext === 'css') results.css = text;
+    else if(ext === 'js') results.js = text;
+    else results.html = text; // .html/.htm, or anything unrecognized
+  }
+
+  // Round-trip support: a single imported HTML file that still has its own
+  // <style>/<script> tags (e.g. a file exported from Forge) gets split back
+  // into the three tabs instead of dumping everything into index.html.
+  if(results.html && !results.css && !results.js){
+    const styleMatch = results.html.match(/<style>([\s\S]*?)<\/style>/i);
+    const scriptMatch = results.html.match(/<script>([\s\S]*?)<\/script>/i);
+    if(styleMatch) results.css = styleMatch[1].trim();
+    if(scriptMatch) results.js = scriptMatch[1].trim();
+    if(styleMatch || scriptMatch){
+      results.html = results.html
+        .replace(/<style>[\s\S]*?<\/style>/i, '')
+        .replace(/<script>[\s\S]*?<\/script>/i, '')
+        .trim();
+    }
+  }
+
+  const loaded = [];
+  if(results.html !== null){ files.html.content = results.html; loaded.push(files.html.label); }
+  if(results.css !== null){ files.css.content = results.css; loaded.push(files.css.label); }
+  if(results.js !== null){ files.js.content = results.js; loaded.push(files.js.label); }
+
+  editor.setValue(files[activeFile].content);
+  renderTabs();
+  runPreview();
+  showToast(loaded.length ? `Imported ${loaded.join(', ')}` : 'No matching files found to import');
+});
+
+/* ---- Extensions panel ---- */
+const extBackdrop = document.getElementById('extBackdrop');
+const extClose = document.getElementById('extClose');
+document.getElementById('extMenuLabel').addEventListener('click', (e) => {
+  e.stopPropagation();
+  extBackdrop.classList.add('show');
+});
+extClose.onclick = () => extBackdrop.classList.remove('show');
+extBackdrop.addEventListener('click', (e) => { if(e.target === extBackdrop) extBackdrop.classList.remove('show'); });
+
+document.getElementById('extAutoRun').addEventListener('change', (e) => {
+  autoRunEnabled = e.target.checked;
+  showToast(autoRunEnabled ? 'Auto run enabled' : 'Auto run disabled — use ⌘⏎ to preview');
+});
+document.getElementById('extWordWrap').addEventListener('change', (e) => {
+  if(!usingFallbackEditor){
+    editor.setOption('lineWrapping', e.target.checked);
+  }else{
+    document.querySelector('.fallback-editor').style.whiteSpace = e.target.checked ? 'pre-wrap' : 'pre';
+  }
+});
+document.getElementById('extConfigureAi').onclick = () => {
+  extBackdrop.classList.remove('show');
+  openSettings();
+};
+
+/* ---- keyboard shortcuts ---- */
+window.addEventListener('keydown', (e) => {
+  if((e.metaKey || e.ctrlKey) && e.key === 'Enter'){ e.preventDefault(); runPreview(); }
+  if((e.metaKey || e.ctrlKey) && ['1','2','3'].includes(e.key)){
+    e.preventDefault();
+    const map = {1:'html',2:'css',3:'js'};
+    switchTab(map[e.key]);
+  }
+  if(e.key === 'Escape' && drawerOpen()) closeDrawer();
+});
+
+/* ---- editor / preview resizer (pointer events: mouse + touch + pen) ---- */
+const resizer = document.getElementById('resizer');
+const editorPane = document.getElementById('editorPane');
+let dragging = false;
+resizer.addEventListener('pointerdown', (e) => {
+  dragging = true;
+  resizer.classList.add('active');
+  resizer.setPointerCapture(e.pointerId);
+  document.body.style.userSelect='none';
+});
+resizer.addEventListener('pointermove', (e) => {
+  if(!dragging) return;
+  const mainRect = document.querySelector('.main').getBoundingClientRect();
+  const pct = ((e.clientX - mainRect.left) / mainRect.width) * 100;
+  editorPane.style.width = Math.min(80, Math.max(20, pct)) + '%';
+  editor.refresh();
+});
+resizer.addEventListener('pointerup', (e) => {
+  dragging = false;
+  resizer.classList.remove('active');
+  document.body.style.userSelect='';
+  try{ resizer.releasePointerCapture(e.pointerId); }catch(err){}
+});
+
+/* ---- mobile Code / Preview switch ---- */
+const mainEl = document.getElementById('main');
+const msButtons = document.querySelectorAll('.ms-btn');
+function isMobileWidth(){ return window.innerWidth <= 760; }
+if(isMobileWidth()) mainEl.classList.add('view-code');
+msButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    msButtons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mainEl.classList.remove('view-code','view-preview');
+    mainEl.classList.add('view-' + btn.dataset.view);
+    if(btn.dataset.view === 'code') setTimeout(() => editor.refresh(), 50);
+  });
+});
+window.addEventListener('resize', () => {
+  if(isMobileWidth() && !mainEl.classList.contains('view-code') && !mainEl.classList.contains('view-preview')){
+    mainEl.classList.add('view-code');
+  }
+  if(!isMobileWidth()){
+    mainEl.classList.remove('view-code','view-preview');
+  }
+  editor.refresh();
+});
+
+/* ---- connectivity banner ---- */
+const offlineBanner = document.getElementById('offlineBanner');
+function updateOnlineState(){
+  offlineBanner.classList.toggle('show', !navigator.onLine);
+}
+window.addEventListener('online', updateOnlineState);
+window.addEventListener('offline', updateOnlineState);
+updateOnlineState();
+
+/* ---- settings: your own Anthropic API key ----
+   "Ask AI" reaches api.anthropic.com automatically only inside Claude.ai,
+   which handles credentials for that call. Once this file is hosted
+   elsewhere (GitHub Pages, etc.) there's no automatic connection — so
+   instead the user can paste their own Anthropic API key, sent with the
+   'anthropic-dangerous-direct-browser-access' header, which lets a
+   browser call Claude directly with no server in between. The key is
+   stored only in this browser's localStorage (falling back to an
+   in-memory variable if that's unavailable, e.g. inside a sandboxed
+   preview) and is never written into the page's source. */
+const memoryStore = {};
+function storeGet(key){
+  try{ return localStorage.getItem(key); }catch(e){ return memoryStore[key] || null; }
+}
+function storeSet(key, val){
+  try{ localStorage.setItem(key, val); }catch(e){ memoryStore[key] = val; }
+}
+function storeRemove(key){
+  try{ localStorage.removeItem(key); }catch(e){ delete memoryStore[key]; }
+}
+function getApiKey(){
+  return (storeGet('forgeAnthropicKey') || '').trim();
+}
+
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsBackdrop = document.getElementById('settingsBackdrop');
+const settingsClose = document.getElementById('settingsClose');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const apiKeyToggle = document.getElementById('apiKeyToggle');
+const apiKeySaveBtn = document.getElementById('apiKeySaveBtn');
+const apiKeyClearBtn = document.getElementById('apiKeyClearBtn');
+
+function openSettings(){
+  apiKeyInput.value = getApiKey();
+  apiKeyInput.type = 'password';
+  settingsBackdrop.classList.add('show');
+  setTimeout(() => apiKeyInput.focus(), 50);
+}
+function closeSettings(){ settingsBackdrop.classList.remove('show'); }
+settingsBtn.onclick = openSettings;
+settingsClose.onclick = closeSettings;
+settingsBackdrop.addEventListener('click', (e) => { if(e.target === settingsBackdrop) closeSettings(); });
+apiKeyToggle.onclick = () => { apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password'; };
+apiKeySaveBtn.onclick = () => {
+  const v = apiKeyInput.value.trim();
+  if(v) storeSet('forgeAnthropicKey', v); else storeRemove('forgeAnthropicKey');
+  closeSettings();
+  showToast(v ? 'API key saved to this browser' : 'API key cleared');
+};
+apiKeyClearBtn.onclick = () => {
+  apiKeyInput.value = '';
+  storeRemove('forgeAnthropicKey');
+  showToast('API key cleared');
+};
+
+/* ---- AI drawer ---- */
+const drawer = document.getElementById('aiDrawer');
+const aiToggle = document.getElementById('aiToggle');
+const aiClose = document.getElementById('aiClose');
+const aiBody = document.getElementById('aiBody');
+const aiInput = document.getElementById('aiInput');
+const aiSend = document.getElementById('aiSend');
+const aiResize = document.getElementById('aiResize');
+
+function drawerOpen(){ return drawer.classList.contains('open'); }
+function defaultDrawerHeight(){
+  // Always leaves at least 24px of breathing room so the header and
+  // close button can never be pushed off the top of a short viewport
+  // (e.g. a phone in landscape).
+  return Math.max(240, Math.min(520, window.innerHeight - 24));
+}
+function openDrawer(){
+  drawer.style.setProperty('--drawer-h', defaultDrawerHeight() + 'px');
+  drawer.classList.add('open');
+  aiToggle.classList.add('on');
+  setTimeout(() => aiInput.focus(), 200);
+}
+function closeDrawer(){
+  drawer.classList.remove('open');
+  aiToggle.classList.remove('on');
+}
+aiToggle.onclick = () => drawerOpen() ? closeDrawer() : openDrawer();
+aiClose.onclick = closeDrawer;
+window.addEventListener('resize', () => {
+  if(drawerOpen()) drawer.style.setProperty('--drawer-h', defaultDrawerHeight() + 'px');
+});
+
+let resizingDrawer = false, startY = 0, startH = 500;
+aiResize.addEventListener('pointerdown', (e) => {
+  resizingDrawer = true; startY = e.clientY;
+  startH = drawer.getBoundingClientRect().height;
+  aiResize.setPointerCapture(e.pointerId);
+  document.body.style.userSelect = 'none';
+});
+aiResize.addEventListener('pointermove', (e) => {
+  if(!resizingDrawer) return;
+  const delta = startY - e.clientY;
+  const h = Math.min(window.innerHeight - 24, Math.max(240, startH + delta));
+  drawer.style.setProperty('--drawer-h', h + 'px');
+});
+aiResize.addEventListener('pointerup', (e) => {
+  resizingDrawer = false;
+  document.body.style.userSelect='';
+  try{ aiResize.releasePointerCapture(e.pointerId); }catch(err){}
+});
+
+function addMsg(role, text, isError){
+  const div = document.createElement('div');
+  div.className = 'msg ' + role + (isError ? ' error' : '');
+  if(role === 'user'){ div.textContent = text; }
+  else { div.innerHTML = '<span class="txt"></span>'; }
+  aiBody.appendChild(div);
+  aiBody.scrollTop = aiBody.scrollHeight;
+  return div;
+}
+
+function addTyping(){
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+  aiBody.appendChild(div);
+  aiBody.scrollTop = aiBody.scrollHeight;
+  return div;
+}
+
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderAiResponse(container, text){
+  const fenceRe = /```(html|css|javascript|js)\s*\n([\s\S]*?)```/gi;
+  let lastIndex = 0;
+  let match;
+  const frag = document.createDocumentFragment();
+  const langKey = {html:'html', css:'css', javascript:'js', js:'js'};
+
+  while((match = fenceRe.exec(text)) !== null){
+    const before = text.slice(lastIndex, match.index).trim();
+    if(before){
+      const p = document.createElement('div');
+      p.className = 'txt';
+      p.textContent = before;
+      frag.appendChild(p);
+    }
+    const lang = langKey[match[1].toLowerCase()] || 'html';
+    const code = match[2];
+    const card = document.createElement('div');
+    card.className = 'code-card';
+    card.innerHTML = `<div class="cc-head"><span>${files[lang].label}</span><button class="cc-insert">Insert</button></div><pre>${escapeHtml(code)}</pre>`;
+    const btn = card.querySelector('.cc-insert');
+    btn.onclick = () => {
+      files[lang].content = code;
+      if(activeFile === lang){ editor.setValue(code); }
+      renderTabs();
+      runPreview();
+      btn.textContent = 'Inserted';
+      btn.classList.add('done');
+      showToast(`${files[lang].label} updated`);
+    };
+    frag.appendChild(card);
+    lastIndex = fenceRe.lastIndex;
+  }
+  const rest = text.slice(lastIndex).trim();
+  if(rest || frag.children.length === 0){
+    const p = document.createElement('div');
+    p.className = 'txt';
+    p.textContent = rest || text;
+    frag.appendChild(p);
+  }
+  container.innerHTML = '';
+  container.appendChild(frag);
+}
+
+// Best-effort signal for "is this running inside Claude.ai's artifact frame"
+// vs. standalone (GitHub Pages, local file, etc.) — used only to pick a
+// more useful error message, never to gate functionality.
+const isEmbedded = (() => { try { return window.self !== window.top; }catch(e){ return true; } })();
+
+async function askAI(retryQuestion){
+  const question = retryQuestion || aiInput.value.trim();
+  if(!question) return;
+  if(!retryQuestion){ aiInput.value = ''; addMsg('user', question); }
+
+  if(!navigator.onLine){
+    addMsg('ai', "You're offline right now — AI assist needs an internet connection. Everything else still works.", true);
+    return;
+  }
+
+  aiSend.disabled = true;
+  aiInput.disabled = true;
+  const typingEl = addTyping();
+
+  const systemPrompt = `You are a coding assistant embedded in a small in-browser editor with three files: index.html, style.css, script.js.
+Current index.html:
+\`\`\`html
+${files.html.content}
+\`\`\`
+Current style.css:
+\`\`\`css
+${files.css.content}
+\`\`\`
+Current script.js:
+\`\`\`javascript
+${files.js.content}
+\`\`\`
+When the user asks for code changes, respond with a brief one or two sentence explanation, then provide the FULL updated content of each file you changed as a fenced code block tagged html, css, or javascript (always give the complete file content, not just a diff/snippet). Only include files you actually changed. Keep explanations short.`;
+
+  const apiKey = getApiKey();
+  const endpoint = "https://api.anthropic.com/v1/messages";
+  const headers = { "Content-Type": "application/json" };
+  if(apiKey){
+    headers["x-api-key"] = apiKey;
+    headers["anthropic-version"] = "2023-06-01";
+    headers["anthropic-dangerous-direct-browser-access"] = "true";
+  }
+
+  try{
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: question }]
+      })
+    });
+    if(response.status === 401){ throw { code: 401 }; }
+    if(!response.ok) throw new Error('Request failed: ' + response.status);
+    const data = await response.json();
+    const text = (data.content || []).map(b => b.text || '').join('\n').trim();
+    typingEl.remove();
+    if(!text){ throw new Error('Empty response'); }
+    const msgEl = addMsg('ai', '');
+    renderAiResponse(msgEl, text);
+  }catch(err){
+    typingEl.remove();
+    let msg = "Couldn't reach the AI just now.";
+    if(err && err.code === 401){
+      msg = "That API key was rejected. Double-check it in settings (gear icon) — keys from console.anthropic.com start with 'sk-ant-'.";
+    } else if(apiKey){
+      msg = "Couldn't reach Anthropic's API just now — check your connection and try again.";
+    } else if(!isEmbedded){
+      msg = "AI assist isn't connected here — this page is running outside Claude.ai. Open settings (gear icon) and add your own Anthropic API key.";
+    }
+    const errEl = addMsg('ai', msg, true);
+    const retry = document.createElement('button');
+    retry.className = 'retry-btn';
+    retry.textContent = 'Retry';
+    retry.onclick = () => { errEl.remove(); askAI(question); };
+    errEl.appendChild(retry);
+    if(!isEmbedded){
+      const setup = document.createElement('button');
+      setup.className = 'retry-btn';
+      setup.style.marginLeft = '6px';
+      setup.textContent = 'Open settings';
+      setup.onclick = () => { errEl.remove(); openSettings(); };
+      errEl.appendChild(setup);
+    }
+  }
+  aiSend.disabled = false;
+  aiInput.disabled = false;
+  aiInput.focus();
+}
+
+aiSend.onclick = () => askAI();
+aiInput.addEventListener('keydown', (e) => { if(e.key === 'Enter' && !aiInput.disabled) askAI(); });
+
+/* ---- toasts ---- */
+function showToast(text){
+  const wrap = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = 'toast ok';
+  t.innerHTML = `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>${text}</span>`;
+  wrap.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('leaving');
+    setTimeout(() => t.remove(), 200);
+  }, 2600);
+}
+</script>
+</body>
+</html>
